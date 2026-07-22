@@ -1,0 +1,29 @@
+# Python 가상환경
+.venv/
+venv/
+
+# Python 캐시 파일
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 환경변수 및 비밀번호
+.env
+
+# 테스트 캐시
+.pytest_cache/
+
+# Streamlit 설정
+.streamlit/
+
+# 벡터 데이터베이스
+data/vector_db/
+
+# 가공된 데이터
+data/processed/
+
+# 운영체제 및 편집기 파일
+.DS_Store
+Thumbs.db
+.vscode/
