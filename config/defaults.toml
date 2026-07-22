@@ -1,0 +1,61 @@
+[app]
+name = "출처를 보여주는 대학 학사정보 AI 도우미"
+environment = "development"
+log_level = "INFO"
+display_timezone = "Asia/Seoul"
+
+[paths]
+data = "data"
+raw = "data/raw"
+processed = "data/processed"
+snapshots = "data/snapshots"
+catalog = "data/catalog"
+vector_db = "data/vector_db"
+keyword_index = "data/keyword_index"
+quarantine = "data/quarantine"
+
+[models.embedding]
+name = "intfloat/multilingual-e5-base"
+revision = ""
+device = "cpu"
+normalize = true
+query_prefix = "query: "
+passage_prefix = "passage: "
+max_length = 512
+
+[models.reranker]
+enabled = false
+name = ""
+revision = ""
+
+[models.llm]
+provider = "openai_compatible"
+name = ""
+base_url = ""
+timeout_seconds = 60
+
+[chunk]
+target_chars = 600
+max_chars = 900
+overlap_chars = 100
+
+[retrieval]
+dense_top_k = 40
+keyword_top_k = 40
+rerank_top_k = 20
+evidence_top_k = 8
+rrf_k = 60
+dense_weight = 0.55
+keyword_weight = 0.45
+
+[crawl]
+delay_seconds = 2.0
+max_pages = 50
+
+[upload]
+max_megabytes = 50
+pdf_max_pages = 1000
+
+[ocr]
+dpi = 300
+languages = "kor+eng"
