@@ -33,11 +33,14 @@ PowerShell에서 프로젝트 폴더로 이동한 뒤 다음 명령을 순서대
 
 ```powershell
 Set-Location <프로젝트 폴더>
-py -3.11 -m venv .venv
+py -3 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
+
+이미 정상적인 `.venv`가 있다면 가상환경 생성 명령은 건너뛰고 활성화부터
+진행합니다.
 
 PowerShell 실행 정책 때문에 가상환경 활성화가 차단되면 현재 터미널에서만
 다음 설정을 적용한 후 다시 활성화합니다.
