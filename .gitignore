@@ -27,3 +27,5 @@ data/processed/
 .DS_Store
 Thumbs.db
 .vscode/
+
+.pytest_tmp/
