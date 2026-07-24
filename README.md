@@ -108,6 +108,27 @@ python -m streamlit run app.py
 유형 선택지는 현재 ChromaDB 색인에 실제로 존재하는 메타데이터에서 만듭니다.
 이 화면은 LLM 답변을 생성하지 않습니다.
 
+## 통합 corpus 생성
+
+PDF, CSV, TXT 원본과 manifest를 다시 읽어 통합 JSONL을 생성합니다.
+
+```powershell
+python -m src.ingestion.build_corpus
+```
+
+결과는 `data/processed/documents.jsonl`과
+`data/processed/ingestion_report.json`에 UTF-8(BOM 없음)로 저장됩니다.
+Windows PowerShell 5.1은 BOM 없는 UTF-8 파일을 기본 CP949로 오해할 수 있으므로
+내용을 확인할 때 인코딩을 명시해야 합니다.
+
+```powershell
+Get-Content -Encoding UTF8 .\data\processed\documents.jsonl
+Get-Content -Encoding UTF8 .\data\processed\ingestion_report.json
+```
+
+편집기에서도 파일 인코딩을 UTF-8로 선택하세요. 깨져 보이는 문자열을 다시
+저장하면 원래 정상인 UTF-8 데이터가 실제로 손상될 수 있습니다.
+
 ## PDF 색인과 검색
 
 검색할 원본 PDF를 `data/raw/pdfs`에 복사합니다. 색인·삭제·재색인 명령은

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import shutil
 from pathlib import Path
 
@@ -21,6 +22,12 @@ from src.ingestion.pdf_models import (
 )
 
 
+_ONE_PIXEL_PNG = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk"
+    "+A8AAQUBAScY42YAAAAASUVORK5CYII="
+)
+
+
 def _create_pdf(
     path: Path,
     page_texts: list[str],
@@ -35,6 +42,16 @@ def _create_pdf(
             page = document.new_page()
             if text:
                 page.insert_text((72, 72), text)
+        document.save(path)
+    finally:
+        document.close()
+
+
+def _create_image_pdf(path: Path) -> None:
+    document = pymupdf.open()
+    try:
+        page = document.new_page()
+        page.insert_image(page.rect, stream=_ONE_PIXEL_PNG)
         document.save(path)
     finally:
         document.close()
@@ -74,6 +91,24 @@ def test_page_count_text_and_one_based_page_numbers_are_preserved(
         "third page",
     ]
     assert result.status is PdfDocumentStatus.SUCCESS
+
+
+def test_image_page_is_distinguished_from_blank_page(tmp_path: Path) -> None:
+    pdf_path = tmp_path / "image.pdf"
+    _create_image_pdf(pdf_path)
+
+    result = extract_pdf_file(pdf_path, project_root=tmp_path)
+
+    assert result.page_count == 1
+    assert result.text_page_count == 0
+    assert result.image_page_count == 1
+    assert result.empty_page_count == 0
+    assert result.pages[0].status is PdfPageStatus.IMAGE
+    assert result.pages[0].image_count == 1
+    assert result.pages[0].max_image_coverage > 0
+    assert any(
+        issue.code is PdfIssueCode.IMAGE_PAGE for issue in result.issues
+    )
 
 
 def test_blank_page_keeps_its_page_number_and_reports_warning(

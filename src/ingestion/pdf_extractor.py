@@ -74,6 +74,30 @@ def _extract_page_text(page: pymupdf.Page) -> str:
     return page.get_text("text", sort=True).replace("\x00", "").strip()
 
 
+def _inspect_page_images(page: pymupdf.Page) -> tuple[int, float]:
+    """직접 텍스트가 없는 페이지의 표시 이미지 수와 최대 면적 비율."""
+
+    page_rect = pymupdf.Rect(page.rect)
+    page_area = max(page_rect.width * page_rect.height, 0.0)
+    if page_area <= 0:
+        return 0, 0.0
+
+    visible_coverages: list[float] = []
+    for image_info in page.get_image_info(hashes=False, xrefs=False):
+        bbox = image_info.get("bbox")
+        if bbox is None:
+            continue
+        visible_rect = pymupdf.Rect(bbox) & page_rect
+        visible_area = max(visible_rect.width * visible_rect.height, 0.0)
+        if visible_rect.is_empty or visible_area <= 0:
+            continue
+        visible_coverages.append(min(visible_area / page_area, 1.0))
+
+    if not visible_coverages:
+        return 0, 0.0
+    return len(visible_coverages), max(visible_coverages)
+
+
 def _error_result(
     *,
     path: Path,
@@ -91,6 +115,7 @@ def _error_result(
         file_size_bytes=file_size,
         page_count=0,
         text_page_count=0,
+        image_page_count=0,
         empty_page_count=0,
         failed_page_count=0,
         pages=[],
@@ -191,24 +216,70 @@ def extract_pdf_file(
                         status=PdfPageStatus.TEXT,
                     )
                 )
-            else:
-                message = f"{page_number}쪽에서 추출 가능한 텍스트를 찾지 못했습니다."
+                continue
+
+            try:
+                image_count, max_image_coverage = _inspect_page_images(page)
+            except Exception as error:
+                message = f"{page_number}쪽 이미지 분류에 실패했습니다: {error}"
                 pages.append(
                     PdfPageExtraction(
                         page_index=page_index,
                         page_number=page_number,
-                        status=PdfPageStatus.EMPTY,
+                        status=PdfPageStatus.FAILED,
+                        error_message=message,
                     )
                 )
                 issues.append(
                     PdfIssue(
-                        code=PdfIssueCode.EMPTY_PAGE,
+                        code=PdfIssueCode.PAGE_CLASSIFICATION_FAILED,
                         page_number=page_number,
                         message=message,
                     )
                 )
+                continue
+
+            if image_count:
+                message = (
+                    f"{page_number}쪽은 직접 추출되는 텍스트 없이 "
+                    "표시 이미지만 포함합니다."
+                )
+                pages.append(
+                    PdfPageExtraction(
+                        page_index=page_index,
+                        page_number=page_number,
+                        status=PdfPageStatus.IMAGE,
+                        image_count=image_count,
+                        max_image_coverage=max_image_coverage,
+                    )
+                )
+                issues.append(
+                    PdfIssue(
+                        code=PdfIssueCode.IMAGE_PAGE,
+                        page_number=page_number,
+                        message=message,
+                    )
+                )
+                continue
+
+            message = f"{page_number}쪽에서 추출 가능한 내용을 찾지 못했습니다."
+            pages.append(
+                PdfPageExtraction(
+                    page_index=page_index,
+                    page_number=page_number,
+                    status=PdfPageStatus.EMPTY,
+                )
+            )
+            issues.append(
+                PdfIssue(
+                    code=PdfIssueCode.EMPTY_PAGE,
+                    page_number=page_number,
+                    message=message,
+                )
+            )
 
     text_page_count = sum(page.status is PdfPageStatus.TEXT for page in pages)
+    image_page_count = sum(page.status is PdfPageStatus.IMAGE for page in pages)
     empty_page_count = sum(page.status is PdfPageStatus.EMPTY for page in pages)
     failed_page_count = sum(page.status is PdfPageStatus.FAILED for page in pages)
 
@@ -230,7 +301,7 @@ def extract_pdf_file(
         )
     elif failed_page_count:
         status = PdfDocumentStatus.PARTIAL
-    elif empty_page_count:
+    elif empty_page_count or image_page_count:
         status = PdfDocumentStatus.SUCCESS_WITH_WARNINGS
     else:
         status = PdfDocumentStatus.SUCCESS
@@ -243,6 +314,7 @@ def extract_pdf_file(
         file_size_bytes=file_size,
         page_count=page_count,
         text_page_count=text_page_count,
+        image_page_count=image_page_count,
         empty_page_count=empty_page_count,
         failed_page_count=failed_page_count,
         pages=pages,

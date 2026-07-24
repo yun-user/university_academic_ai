@@ -12,6 +12,7 @@ from src.models import NonEmptyText, Sha256Hex, StrictModel
 
 class PdfPageStatus(str, Enum):
     TEXT = "text"
+    IMAGE = "image"
     EMPTY = "empty"
     FAILED = "failed"
 
@@ -29,7 +30,9 @@ class PdfIssueCode(str, Enum):
     PDF_OPEN_FAILED = "pdf_open_failed"
     PASSWORD_REQUIRED = "password_required"
     EMPTY_PAGE = "empty_page"
+    IMAGE_PAGE = "image_page"
     PAGE_EXTRACTION_FAILED = "page_extraction_failed"
+    PAGE_CLASSIFICATION_FAILED = "page_classification_failed"
     NO_EXTRACTABLE_TEXT = "no_extractable_text"
     DUPLICATE_FILE = "duplicate_file"
 
@@ -46,6 +49,8 @@ class PdfPageExtraction(StrictModel):
     text: str = ""
     status: PdfPageStatus
     error_message: str | None = None
+    image_count: int = Field(default=0, ge=0)
+    max_image_coverage: float = Field(default=0.0, ge=0.0, le=1.0)
 
     @model_validator(mode="after")
     def validate_page_state(self) -> Self:
@@ -54,7 +59,18 @@ class PdfPageExtraction(StrictModel):
         if self.status is PdfPageStatus.TEXT and not self.text.strip():
             raise ValueError("TEXT 상태에는 추출된 텍스트가 필요합니다.")
         if self.status is not PdfPageStatus.TEXT and self.text:
-            raise ValueError("EMPTY 또는 FAILED 상태의 text는 비어 있어야 합니다.")
+            raise ValueError(
+                "IMAGE, EMPTY 또는 FAILED 상태의 text는 비어 있어야 합니다."
+            )
+        if self.status is PdfPageStatus.IMAGE:
+            if self.image_count < 1 or self.max_image_coverage <= 0:
+                raise ValueError(
+                    "IMAGE 상태에는 표시 이미지 수와 면적 비율이 필요합니다."
+                )
+        elif self.image_count or self.max_image_coverage:
+            raise ValueError(
+                "IMAGE가 아닌 상태에는 이미지 분류값을 저장할 수 없습니다."
+            )
         if self.status is PdfPageStatus.FAILED and not self.error_message:
             raise ValueError("FAILED 상태에는 error_message가 필요합니다.")
         return self
@@ -68,6 +84,7 @@ class PdfDocumentExtraction(StrictModel):
     file_size_bytes: int = Field(ge=0)
     page_count: int = Field(ge=0)
     text_page_count: int = Field(ge=0)
+    image_page_count: int = Field(default=0, ge=0)
     empty_page_count: int = Field(ge=0)
     failed_page_count: int = Field(ge=0)
     pages: list[PdfPageExtraction] = Field(default_factory=list)
@@ -90,11 +107,20 @@ class PdfDocumentExtraction(StrictModel):
 
         count_sum = (
             self.text_page_count
+            + self.image_page_count
             + self.empty_page_count
             + self.failed_page_count
         )
         if count_sum != self.page_count:
             raise ValueError("페이지 상태별 개수 합은 page_count와 같아야 합니다.")
+
+        actual_image_count = sum(
+            page.status is PdfPageStatus.IMAGE for page in self.pages
+        )
+        if actual_image_count != self.image_page_count:
+            raise ValueError(
+                "image_page_count는 IMAGE 상태 페이지 수와 같아야 합니다."
+            )
 
         if self.is_duplicate != bool(self.duplicate_of):
             raise ValueError("중복 문서는 duplicate_of를 함께 가져야 합니다.")
