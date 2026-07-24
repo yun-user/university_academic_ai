@@ -29,3 +29,22 @@ Thumbs.db
 .vscode/
 
 .pytest_tmp/
+
+# 생성 데이터
+data/vector_db/
+data/processed/
+data/catalog/
+data/keyword_index/
+data/quarantine/
+data/snapshots/
+
+# Python 및 테스트 캐시
+__pycache__/
+*.pyc
+.pytest_cache/
+.pytest_tmp/
+
+# 비밀 설정
+.env
+
+data/raw/
