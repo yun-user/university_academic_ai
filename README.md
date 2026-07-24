@@ -3,9 +3,9 @@
 대학의 공개 학사 자료와 관리자가 등록한 문서를 검색하고, 답변 근거의
 문서명·페이지 또는 URL·원문을 함께 표시하기 위한 졸업작품 프로젝트입니다.
 
-현재 저장소에는 PDF 페이지별 텍스트 추출과 **검색 전용 dense retrieval**까지
-구현되어 있으며 Streamlit 사용자 화면에서 관련 PDF 원문을 검색할 수 있습니다.
-웹 공지 수집과 LLM 답변 생성은 아직 구현하지 않았습니다.
+현재 저장소에는 PDF·CSV·TXT 통합 전처리와 **검색 전용 dense retrieval**까지
+구현되어 있으며 Streamlit 사용자 화면에서 관련 원문을 검색할 수 있습니다.
+웹 공지 수집, OCR과 LLM 답변 생성은 아직 구현하지 않았습니다.
 
 ## 현재 구현 내용
 
@@ -17,6 +17,8 @@
 - 페이지 경계를 넘지 않는 검색 청크와 출처 메타데이터 생성
 - sentence-transformers 기반 한국어 임베딩 어댑터
 - 외부 임베딩을 사용하는 ChromaDB 영속 색인과 Top-K 검색
+- `documents.jsonl` 기반 PDF·CSV·TXT 통합 색인
+- PDF 페이지 번호와 CSV 원본 행 번호를 보존하는 출처 메타데이터
 - 최소 점수 필터, 중복 청크 제거, 문서별 삭제·재색인 인터페이스
 - 색인 메타데이터 기반 학과·문서 유형 사전 필터
 - 비밀값을 마스킹하는 기본 로깅
@@ -104,9 +106,10 @@ python -m streamlit run app.py
 여세요. 종료할 때는 실행 중인 PowerShell에서 `Ctrl+C`를 누릅니다.
 
 화면에서 질문과 학과·문서 유형을 선택하고 `검색`을 누르면 관련 원문이
-문서명, PDF 페이지 번호, cosine 검색 점수와 함께 표시됩니다. 학과와 문서
-유형 선택지는 현재 ChromaDB 색인에 실제로 존재하는 메타데이터에서 만듭니다.
-이 화면은 LLM 답변을 생성하지 않습니다.
+문서명, PDF 페이지 또는 CSV 행 번호, 기준연도, 최신 자료 여부, cosine 검색
+점수와 함께 표시됩니다. 학과와 문서 유형 선택지는 현재 통합 ChromaDB 색인에
+실제로 존재하는 메타데이터에서 만듭니다. 이 화면은 LLM 답변을 생성하지
+않으며 근거가 부족하면 정해진 확인 불가 문구를 표시합니다.
 
 ## 통합 corpus 생성
 
@@ -129,10 +132,37 @@ Get-Content -Encoding UTF8 .\data\processed\ingestion_report.json
 편집기에서도 파일 인코딩을 UTF-8로 선택하세요. 깨져 보이는 문자열을 다시
 저장하면 원래 정상인 UTF-8 데이터가 실제로 손상될 수 있습니다.
 
-## PDF 색인과 검색
+## 통합 corpus 색인과 검색
 
-검색할 원본 PDF를 `data/raw/pdfs`에 복사합니다. 색인·삭제·재색인 명령은
-이 원본 파일을 수정하거나 삭제하지 않습니다.
+`data/processed/documents.jsonl`을 기본 입력으로 사용해 PDF, CSV, TXT를 하나의
+ChromaDB 컬렉션으로 다시 색인합니다.
+
+```powershell
+python -m scripts.search_documents rebuild
+```
+
+`rebuild`는 통합 검색 컬렉션만 안전하게 초기화합니다. 원본 파일,
+`documents.jsonl`, 기존 PDF 전용 컬렉션은 삭제하거나 수정하지 않습니다.
+`searchable=true`이고 `text`가 비어 있지 않은 레코드만 색인합니다. 긴 원문은
+기존 청크 분할기를 사용하며 같은 corpus를 반복 색인해도 결정적 청크 ID로
+중복이 생기지 않습니다.
+
+통합 색인에서 한국어 질문을 검색합니다.
+
+```powershell
+python -m scripts.search_documents search "졸업하려면 전공학점을 몇 학점 들어야 해?"
+python -m scripts.search_documents search "창의적공학설계입문" --top-k 5 --min-score 0.40
+```
+
+검색 결과 JSON에는 문서 제목·유형·학과·기준연도·최신 자료 여부·출처 파일명과
+함께 PDF는 `page_number`, CSV는 `row_number`가 포함됩니다. TXT는 두 위치 값이
+모두 `null`이며 파일 전체 원문에서 생성된 청크임을 뜻합니다.
+
+## 기존 PDF 전용 색인과 검색
+
+기존 PDF 전용 서비스와 명령은 호환성을 위해 유지합니다. 검색할 원본 PDF를
+`data/raw/pdfs`에 복사합니다. 색인·삭제·재색인 명령은 이 원본 파일을
+수정하거나 삭제하지 않습니다.
 
 ```powershell
 Copy-Item "C:\path\to\document.pdf" .\data\raw\pdfs\
@@ -198,11 +228,16 @@ university_academic_ai/
 │   ├── ingestion/
 │   │   ├── pdf_extractor.py   # 페이지별 PDF 추출
 │   │   ├── pdf_models.py      # 추출 결과 계약
-│   │   └── chunker.py         # 페이지 보존 검색 청킹
+│   │   ├── chunker.py         # 기존 PDF 검색 청킹
+│   │   └── build_corpus.py    # PDF·CSV·TXT 통합 전처리
 │   ├── retrieval/
 │   │   ├── embeddings.py      # 한국어 임베딩 어댑터
-│   │   ├── vector_store.py    # ChromaDB 영속 저장
-│   │   └── search_service.py  # 색인·검색·삭제·재색인
+│   │   ├── document_models.py # 통합 corpus·검색 결과 계약
+│   │   ├── document_chunker.py
+│   │   ├── document_vector_store.py
+│   │   ├── document_search_service.py
+│   │   ├── vector_store.py    # 기존 PDF 전용 ChromaDB
+│   │   └── search_service.py  # 기존 PDF 전용 서비스
 │   ├── generation/            # 후속 근거 제한 답변 생성
 │   ├── evaluation/            # 후속 평가
 │   └── utils/
@@ -217,7 +252,9 @@ university_academic_ai/
 │   ├── keyword_index/
 │   ├── quarantine/
 │   └── sample/
-├── scripts/search_pdfs.py     # PowerShell용 검색 CLI
+├── scripts/
+│   ├── search_documents.py    # 통합 corpus 색인·검색 CLI
+│   └── search_pdfs.py         # 기존 PDF 전용 CLI
 ├── evals/
 ├── tests/
 ├── docs/
