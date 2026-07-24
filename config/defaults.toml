@@ -47,6 +47,8 @@ evidence_top_k = 8
 rrf_k = 60
 dense_weight = 0.55
 keyword_weight = 0.45
+min_score = 0.35
+dedup_similarity_threshold = 0.95
 
 [crawl]
 delay_seconds = 2.0

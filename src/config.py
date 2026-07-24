@@ -74,6 +74,8 @@ class Settings:
     rrf_k: int
     dense_weight: float
     keyword_weight: float
+    min_retrieval_score: float
+    retrieval_dedup_threshold: float
 
     crawl_delay_seconds: float
     crawl_max_pages: int
@@ -93,6 +95,24 @@ class Settings:
         """화면과 로그에서 사용할 안전한 실행 모드 이름."""
 
         return "generation-enabled" if self.llm_enabled else "retrieval-only"
+
+    @property
+    def vector_db_path(self) -> Path:
+        """검색 구현에서 사용하는 ChromaDB 영속 경로."""
+
+        return self.vector_db_dir
+
+    @property
+    def chunk_size(self) -> int:
+        return self.chunk_target_chars
+
+    @property
+    def chunk_overlap(self) -> int:
+        return self.chunk_overlap_chars
+
+    @property
+    def top_k(self) -> int:
+        return self.evidence_top_k
 
     def safe_summary(self) -> dict[str, str | bool]:
         """비밀값과 내부 절대경로를 제외한 상태 정보만 반환한다."""
@@ -136,6 +156,14 @@ def _env_text(name: str, default: Any) -> str:
     return str(default).strip() if raw is None else raw.strip()
 
 
+def _env_text_with_legacy(primary: str, legacy: str, default: Any) -> str:
+    """우선 환경변수가 있으면 legacy 값을 읽거나 검증하지 않는다."""
+
+    if os.getenv(primary) is not None:
+        return _env_text(primary, default)
+    return _env_text(legacy, default)
+
+
 def _env_optional_text(name: str, default: Any = None) -> str | None:
     value = _env_text(name, "" if default is None else default)
     return value or None
@@ -162,6 +190,13 @@ def _env_int(name: str, default: Any) -> int:
         return int(default if raw is None else raw)
     except (TypeError, ValueError) as exc:
         raise ConfigurationError(f"{name}은 정수여야 합니다.") from exc
+
+
+def _env_int_with_legacy(primary: str, legacy: str, default: Any) -> int:
+    """우선 환경변수가 있으면 legacy 정수값을 파싱하지 않는다."""
+
+    selected = primary if os.getenv(primary) is not None else legacy
+    return _env_int(selected, default)
 
 
 def _env_float(name: str, default: Any) -> float:
@@ -246,6 +281,24 @@ def _validate(settings: Settings) -> Settings:
     if settings.dense_weight + settings.keyword_weight <= 0:
         raise ConfigurationError("검색 결합 가중치 합은 0보다 커야 합니다.")
 
+    if not 0.0 <= settings.min_retrieval_score <= 1.0:
+        raise ConfigurationError(
+            "MIN_RETRIEVAL_SCORE는 0 이상 1 이하여야 합니다."
+        )
+    if not 0.0 <= settings.retrieval_dedup_threshold <= 1.0:
+        raise ConfigurationError(
+            "RETRIEVAL_DEDUP_THRESHOLD는 0 이상 1 이하여야 합니다."
+        )
+
+    vector_db_uses_raw_area = (
+        settings.vector_db_dir == settings.raw_data_dir
+        or settings.vector_db_dir.is_relative_to(settings.raw_data_dir)
+    )
+    if vector_db_uses_raw_area:
+        raise ConfigurationError(
+            "VECTOR_DB_PATH는 원본 보존 영역인 RAW_DATA_DIR 밖에 있어야 합니다."
+        )
+
     return settings
 
 
@@ -291,7 +344,9 @@ def get_settings() -> Settings:
             _env_text("CATALOG_DIR", _required(paths, "catalog"))
         ),
         vector_db_dir=_resolve_project_path(
-            _env_text("VECTOR_DB_DIR", _required(paths, "vector_db"))
+            _env_text_with_legacy(
+                "VECTOR_DB_PATH", "VECTOR_DB_DIR", _required(paths, "vector_db")
+            )
         ),
         keyword_index_dir=_resolve_project_path(
             _env_text("KEYWORD_INDEX_DIR", _required(paths, "keyword_index"))
@@ -340,14 +395,16 @@ def get_settings() -> Settings:
         llm_timeout_seconds=_env_int(
             "LLM_TIMEOUT_SECONDS", _required(llm, "timeout_seconds")
         ),
-        chunk_target_chars=_env_int(
-            "CHUNK_TARGET_CHARS", _required(chunk, "target_chars")
+        chunk_target_chars=_env_int_with_legacy(
+            "CHUNK_SIZE",
+            "CHUNK_TARGET_CHARS", _required(chunk, "target_chars"),
         ),
         chunk_max_chars=_env_int(
             "CHUNK_MAX_CHARS", _required(chunk, "max_chars")
         ),
-        chunk_overlap_chars=_env_int(
-            "CHUNK_OVERLAP_CHARS", _required(chunk, "overlap_chars")
+        chunk_overlap_chars=_env_int_with_legacy(
+            "CHUNK_OVERLAP",
+            "CHUNK_OVERLAP_CHARS", _required(chunk, "overlap_chars"),
         ),
         dense_top_k=_env_int(
             "DENSE_TOP_K", _required(retrieval, "dense_top_k")
@@ -358,8 +415,9 @@ def get_settings() -> Settings:
         rerank_top_k=_env_int(
             "RERANK_TOP_K", _required(retrieval, "rerank_top_k")
         ),
-        evidence_top_k=_env_int(
-            "EVIDENCE_TOP_K", _required(retrieval, "evidence_top_k")
+        evidence_top_k=_env_int_with_legacy(
+            "TOP_K",
+            "EVIDENCE_TOP_K", _required(retrieval, "evidence_top_k"),
         ),
         rrf_k=_env_int("RRF_K", _required(retrieval, "rrf_k")),
         dense_weight=_env_float(
@@ -367,6 +425,13 @@ def get_settings() -> Settings:
         ),
         keyword_weight=_env_float(
             "KEYWORD_WEIGHT", _required(retrieval, "keyword_weight")
+        ),
+        min_retrieval_score=_env_float(
+            "MIN_RETRIEVAL_SCORE", _required(retrieval, "min_score")
+        ),
+        retrieval_dedup_threshold=_env_float(
+            "RETRIEVAL_DEDUP_THRESHOLD",
+            _required(retrieval, "dedup_similarity_threshold"),
         ),
         crawl_delay_seconds=_env_float(
             "CRAWL_DELAY_SECONDS", _required(crawl, "delay_seconds")

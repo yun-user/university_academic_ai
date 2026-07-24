@@ -1,0 +1,4 @@
+학교명: 홍익대학교 세종캠퍼스 
+학교 홈페이지 도메인: https://www.hongik.ac.kr/kr
+학사공지 게시판 주소: https://software.hongik.ac.kr/home/
+대상 학과: 소프트웨어융합학과
