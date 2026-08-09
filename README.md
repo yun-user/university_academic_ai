@@ -107,9 +107,11 @@ python -m streamlit run app.py
 
 화면에서 질문과 학과·문서 유형을 선택하고 `검색`을 누르면 관련 원문이
 문서명, PDF 페이지 또는 CSV 행 번호, 기준연도, 최신 자료 여부, cosine 검색
-점수와 함께 표시됩니다. 학과와 문서 유형 선택지는 현재 통합 ChromaDB 색인에
-실제로 존재하는 메타데이터에서 만듭니다. 이 화면은 LLM 답변을 생성하지
-않으며 근거가 부족하면 정해진 확인 불가 문구를 표시합니다.
+점수와 함께 상위 3개 카드로 표시됩니다. CSV 교과과정은 교과목명·학년·학기·
+이수구분·학수번호·학점/시수로 정리하고, PDF는 300자 미리보기와 전체 원문을
+분리합니다. 학과와 문서 유형 선택지는 현재 통합 ChromaDB 색인에 실제로
+존재하는 메타데이터에서 만듭니다. 이 화면은 LLM 답변을 생성하지 않으며
+근거가 부족하면 정해진 확인 불가 문구를 표시합니다.
 
 ## 통합 corpus 생성
 
@@ -152,11 +154,18 @@ python -m scripts.search_documents rebuild
 ```powershell
 python -m scripts.search_documents search "졸업하려면 전공학점을 몇 학점 들어야 해?"
 python -m scripts.search_documents search "창의적공학설계입문" --top-k 5 --min-score 0.40
+python -m scripts.search_documents search "1학년 전공과목" --json
 ```
 
-검색 결과 JSON에는 문서 제목·유형·학과·기준연도·최신 자료 여부·출처 파일명과
-함께 PDF는 `page_number`, CSV는 `row_number`가 포함됩니다. TXT는 두 위치 값이
-모두 `null`이며 파일 전체 원문에서 생성된 청크임을 뜻합니다.
+기본 출력은 학생이 읽기 쉬운 상위 3개 요약입니다. `--top-k`로 개수를 바꿀 수
+있고, 기존 전체 필드 JSON이 필요할 때만 `--json`을 지정합니다. JSON에서는
+PDF의 `page_number`, CSV의 `row_number`를 확인할 수 있습니다.
+
+학과·학년·학기·이수구분을 확인할 수 있는 교과과정 질문은 구조화 검색으로
+처리합니다. 네 조건에 정확히 맞는 `학년별교과과정` CSV 행이 하나 이상이면
+`--top-k`와 관계없이 중복 교과목을 제거한 전체 CSV 결과만 반환하며 PDF나
+TXT로 개수를 보완하지 않습니다. 정확한 CSV 행이 0개일 때만 일반 의미 검색을
+실행하고, 이때만 `--top-k`와 최소 유사도 기준을 적용합니다.
 
 ## 기존 PDF 전용 색인과 검색
 

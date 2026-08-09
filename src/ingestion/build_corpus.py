@@ -12,6 +12,7 @@ import hashlib
 import json
 import os
 import sys
+import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -94,6 +95,8 @@ REPORT_FIELDS = (
 _TRUE_VALUES = {"1", "true", "yes", "y", "on"}
 _FALSE_VALUES = {"0", "false", "no", "n", "off"}
 _HASH_READ_SIZE = 1024 * 1024
+_ALL_DEPARTMENTS_DOCUMENT_TYPE = "전체교과과정"
+_SOFTWARE_DEPARTMENT = "소프트웨어융합학과"
 
 
 @dataclass(frozen=True, slots=True)
@@ -462,6 +465,21 @@ def _fallback_document_id(source_path: str) -> str:
     return f"UNMANIFESTED-{stable_id.hex[:16].upper()}"
 
 
+def _resolve_pdf_page_department(
+    manifest: dict[str, str] | None,
+    page_text: str,
+) -> str | None:
+    """전체교과과정은 실제 페이지 본문을 근거로 학과를 지정한다."""
+
+    document_type = _nullable_manifest_value(manifest, "document_type")
+    if document_type != _ALL_DEPARTMENTS_DOCUMENT_TYPE:
+        return _nullable_manifest_value(manifest, "department")
+    normalized_text = unicodedata.normalize("NFKC", page_text)
+    if _SOFTWARE_DEPARTMENT in normalized_text:
+        return _SOFTWARE_DEPARTMENT
+    return "전체"
+
+
 def _base_record(
     *,
     path: Path,
@@ -587,6 +605,10 @@ def _process_pdf(
         )
         record["page_number"] = page.page_number
         record["text"] = page.text
+        record["department"] = _resolve_pdf_page_department(
+            manifest,
+            page.text,
+        )
         record["image_only"] = document_image_only
         record["document_image_only"] = document_image_only
         record["page_status"] = page.status.value
@@ -617,6 +639,7 @@ def _process_pdf(
         )
         record["image_only"] = document_image_only
         record["document_image_only"] = document_image_only
+        record["department"] = _resolve_pdf_page_department(manifest, "")
         record["metadata"].update(
             {
                 "pdf_status": extraction.status.value,

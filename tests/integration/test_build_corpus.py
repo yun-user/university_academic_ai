@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import base64
 import csv
+import importlib
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pymupdf
 import pytest
@@ -16,6 +18,7 @@ from src.ingestion.build_corpus import (
     REPORT_FIELDS,
     build_corpus,
 )
+from src.ingestion.pdf_models import PdfDocumentStatus, PdfPageStatus
 
 
 MANIFEST_COLUMNS = (*MANIFEST_FIELDS, "notes")
@@ -192,6 +195,75 @@ def test_pdf_preserves_all_physical_page_numbers(corpus_root: Path) -> None:
     assert all(item["image_only"] is False for item in records)
     assert all(item["document_image_only"] is False for item in records)
     assert result.report["pdf_pages"] == 3
+
+
+def test_all_curriculum_pdf_assigns_department_from_each_page_text(
+    corpus_root: Path,
+    monkeypatch,
+) -> None:
+    pdf_path = (
+        corpus_root
+        / "data/raw/pdfs/2026_홍익대학교_전체교과과정.pdf"
+    )
+    pdf_path.write_bytes(b"synthetic pdf")
+    _write_manifest(
+        corpus_root,
+        [
+            _manifest_row(
+                pdf_path.name,
+                "pdf",
+                document_id="CURR-2026",
+                document_type="전체교과과정",
+                department="소프트웨어융합학과",
+            )
+        ],
+    )
+    pages = [
+        SimpleNamespace(
+            page_number=1,
+            text="조소과 1학년 교과과정",
+            status=PdfPageStatus.TEXT,
+            error_message=None,
+            image_count=0,
+            max_image_coverage=0.0,
+        ),
+        SimpleNamespace(
+            page_number=2,
+            text="소프트웨어융합학과 1학년 교과과정",
+            status=PdfPageStatus.TEXT,
+            error_message=None,
+            image_count=0,
+            max_image_coverage=0.0,
+        ),
+    ]
+    extraction = SimpleNamespace(
+        document_title="2026 전체교과과정",
+        content_hash="a" * 64,
+        page_count=2,
+        text_page_count=2,
+        image_page_count=0,
+        status=PdfDocumentStatus.SUCCESS,
+        issues=[],
+        pages=pages,
+    )
+    build_module = importlib.import_module("src.ingestion.build_corpus")
+    monkeypatch.setattr(
+        build_module,
+        "extract_pdf_file",
+        lambda *_args, **_kwargs: extraction,
+    )
+
+    result = build_corpus(project_root=corpus_root)
+    pdf_records = [
+        item for item in result.documents if item["file_type"] == "pdf"
+    ]
+
+    assert [item["department"] for item in pdf_records] == [
+        "전체",
+        "소프트웨어융합학과",
+    ]
+    assert [item["page_number"] for item in pdf_records] == [1, 2]
+    assert all(item["searchable"] is True for item in pdf_records)
 
 
 def test_image_pdf_is_kept_and_flagged(corpus_root: Path) -> None:

@@ -31,7 +31,7 @@ class CorpusKeywordEmbeddingProvider:
     _groups = (
         ("장학금", "장학"),
         ("졸업", "전공학점"),
-        ("교과목", "학수번호"),
+        ("교과목", "학수번호", "과목", "학년", "학기", "전공"),
         ("학교", "홍익대학교"),
         ("휴학",),
     )
@@ -107,6 +107,35 @@ def _write_corpus(path: Path, records: list[dict[str, object]]) -> None:
     with path.open("w", encoding="utf-8", newline="\n") as output:
         for record in records:
             output.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+
+def _course_text(
+    name: str,
+    *,
+    grade: int,
+    completion_type: str,
+    first_code: str = "",
+    second_code: str = "",
+    credits: str = "3",
+    hours: str = "3",
+) -> str:
+    required = "Y" if completion_type == "전공필수" else "N"
+    elective = "Y" if completion_type == "전공선택" else "N"
+    return "\n".join(
+        (
+            f"학년: {grade}",
+            f"이수구분: {completion_type}",
+            f"교과목명: {name}",
+            f"1학기_학수번호: {first_code}",
+            f"1학기_학점: {credits if first_code else ''}",
+            f"1학기_시수: {hours if first_code else ''}",
+            f"2학기_학수번호: {second_code}",
+            f"2학기_학점: {credits if second_code else ''}",
+            f"2학기_시수: {hours if second_code else ''}",
+            f"전공필수여부: {required}",
+            f"전공선택여부: {elective}",
+        )
+    )
 
 
 def _service(
@@ -450,3 +479,516 @@ def test_rebuild_resets_only_integrated_collection(tmp_path: Path) -> None:
     assert rebuilt.inserted_count == 1
     assert rebuilt.updated_count == 0
     assert service.indexed_chunk_count == 1
+
+
+def test_first_year_question_prioritizes_first_year_csv_rows(
+    tmp_path: Path,
+) -> None:
+    corpus_path = tmp_path / "data/processed/documents.jsonl"
+    records = [
+        _record(
+            document_id="COURSES",
+            file_name="courses.csv",
+            file_type="csv",
+            document_type="학년별교과과정",
+            text=_course_text(
+                f"1학년과목{index}",
+                grade=1,
+                completion_type="전공선택",
+                first_code=f"00100{index}",
+            ),
+            row_number=index,
+        )
+        for index in range(1, 4)
+    ]
+    records.append(
+        _record(
+            document_id="COURSES",
+            file_name="courses.csv",
+            file_type="csv",
+            document_type="학년별교과과정",
+            text=_course_text(
+                "2학년과목",
+                grade=2,
+                completion_type="전공필수",
+                first_code="002001",
+            ),
+            row_number=4,
+        )
+    )
+    _write_corpus(corpus_path, records)
+    service = _service(tmp_path)
+    service.index_corpus()
+
+    results = service.search("소프트웨어융합학과 1학년 과목", top_k=3)
+
+    assert len(results) == 3
+    assert all(result.file_type == "csv" for result in results)
+    assert all("학년: 1" in result.text for result in results)
+
+
+def test_second_semester_question_prioritizes_second_semester_row(
+    tmp_path: Path,
+) -> None:
+    corpus_path = tmp_path / "data/processed/documents.jsonl"
+    _write_corpus(
+        corpus_path,
+        [
+            _record(
+                document_id="COURSES",
+                file_name="courses.csv",
+                file_type="csv",
+                document_type="학년별교과과정",
+                text=_course_text(
+                    "1학기과목",
+                    grade=1,
+                    completion_type="전공선택",
+                    first_code="001001",
+                ),
+                row_number=1,
+            ),
+            _record(
+                document_id="COURSES",
+                file_name="courses.csv",
+                file_type="csv",
+                document_type="학년별교과과정",
+                text=_course_text(
+                    "2학기과목",
+                    grade=1,
+                    completion_type="전공선택",
+                    second_code="001002",
+                ),
+                row_number=2,
+            ),
+        ],
+    )
+    service = _service(tmp_path)
+    service.index_corpus()
+
+    result = service.search("1학년 2학기 과목", top_k=1)[0]
+
+    assert "교과목명: 2학기과목" in result.text
+    assert "2학기_학수번호: 001002" in result.text
+
+
+def test_major_course_question_keeps_required_and_elective_rows_first(
+    tmp_path: Path,
+) -> None:
+    corpus_path = tmp_path / "data/processed/documents.jsonl"
+    _write_corpus(
+        corpus_path,
+        [
+            _record(
+                document_id="COURSES",
+                file_name="courses.csv",
+                file_type="csv",
+                document_type="학년별교과과정",
+                text=_course_text(
+                    "전공필수과목",
+                    grade=1,
+                    completion_type="전공필수",
+                    first_code="001001",
+                ),
+                row_number=1,
+            ),
+            _record(
+                document_id="COURSES",
+                file_name="courses.csv",
+                file_type="csv",
+                document_type="학년별교과과정",
+                text=_course_text(
+                    "전공선택과목",
+                    grade=1,
+                    completion_type="전공선택",
+                    second_code="001002",
+                ),
+                row_number=2,
+            ),
+            _record(
+                document_id="COURSES",
+                file_name="courses.csv",
+                file_type="csv",
+                document_type="학년별교과과정",
+                text=_course_text(
+                    "기초교양과목",
+                    grade=1,
+                    completion_type="기본소양",
+                    first_code="001003",
+                ),
+                row_number=3,
+            ),
+        ],
+    )
+    service = _service(tmp_path)
+    service.index_corpus()
+
+    results = service.search("1학년 전공과목", top_k=2)
+
+    assert len(results) == 2
+    assert {"이수구분: 전공필수", "이수구분: 전공선택"} == {
+        next(
+            line for line in result.text.splitlines()
+            if line.startswith("이수구분:")
+        )
+        for result in results
+    }
+
+
+def test_structured_course_search_returns_only_one_exact_csv_match(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    corpus_path = tmp_path / "data/processed/documents.jsonl"
+    _write_corpus(
+        corpus_path,
+        [
+            _record(
+                document_id="COURSES",
+                file_name="courses.csv",
+                file_type="csv",
+                document_type="학년별교과과정",
+                text=_course_text(
+                    "자료구조및프로그래밍",
+                    grade=2,
+                    completion_type="전공필수",
+                    first_code="704818",
+                ),
+                row_number=21,
+            ),
+            _record(
+                document_id="COURSES",
+                file_name="courses.csv",
+                file_type="csv",
+                document_type="학년별교과과정",
+                text=_course_text(
+                    "회로이론",
+                    grade=2,
+                    completion_type="전공필수",
+                    second_code="704305",
+                ),
+                row_number=22,
+            ),
+            _record(
+                document_id="COURSES",
+                file_name="courses.csv",
+                file_type="csv",
+                document_type="학년별교과과정",
+                text=_course_text(
+                    "자료구조 및 프로그래밍",
+                    grade=2,
+                    completion_type="전공필수",
+                    first_code="704999",
+                ),
+                row_number=23,
+            ),
+            _record(
+                document_id="PROGRAM",
+                file_name="소프트웨어융합학과_프로그램내규.pdf",
+                file_type="pdf",
+                document_type="프로그램내규",
+                text="소프트웨어융합학과 2학년 1학기 전공필수 과목 안내",
+                page_number=4,
+            ),
+        ],
+    )
+    service = _service(tmp_path)
+    service.index_corpus()
+    monkeypatch.setattr(
+        service._embeddings,
+        "embed_query",
+        lambda _question: pytest.fail(
+            "정확한 CSV 결과가 있으면 일반 의미 검색을 실행하면 안 됩니다."
+        ),
+    )
+
+    response = service.search_with_context(
+        "소프트웨어융합학과 2학년 1학기 전공필수 과목을 알려줘",
+        top_k=5,
+        document_type="프로그램내규",
+    )
+
+    assert response.structured_query is True
+    assert response.exact_match_count == 1
+    assert response.semantic_fallback_used is False
+    assert len(response.results) == 1
+    assert response.results[0].file_type == "csv"
+    assert response.results[0].score_kind == "structured_exact"
+    assert response.results[0].row_number == 21
+    assert "교과목명: 자료구조및프로그래밍" in response.results[0].text
+    assert all(result.file_type not in {"pdf", "txt"} for result in response.results)
+
+
+def test_structured_course_search_returns_all_exact_csv_matches_ignoring_top_k(
+    tmp_path: Path,
+) -> None:
+    corpus_path = tmp_path / "data/processed/documents.jsonl"
+    _write_corpus(
+        corpus_path,
+        [
+            _record(
+                document_id="COURSES",
+                file_name="courses.csv",
+                file_type="csv",
+                document_type="학년별교과과정",
+                text=_course_text(
+                    "자료구조및프로그래밍",
+                    grade=2,
+                    completion_type="전공필수",
+                    first_code="704818",
+                ),
+                row_number=21,
+            ),
+            _record(
+                document_id="COURSES",
+                file_name="courses.csv",
+                file_type="csv",
+                document_type="학년별교과과정",
+                text=_course_text(
+                    "알고리즘",
+                    grade=2,
+                    completion_type="전공필수",
+                    first_code="704819",
+                ),
+                row_number=22,
+            ),
+            _record(
+                document_id="PROGRAM",
+                file_name="소프트웨어융합학과_프로그램내규.pdf",
+                file_type="pdf",
+                document_type="프로그램내규",
+                text="소프트웨어융합학과 2학년 1학기 전공필수 과목 안내",
+                page_number=4,
+            ),
+        ],
+    )
+    service = _service(tmp_path)
+    service.index_corpus()
+
+    response = service.search_with_context(
+        "소프트웨어융합학과 2학년 1학기 전공필수 과목을 알려줘",
+        top_k=1,
+    )
+
+    assert response.structured_query is True
+    assert response.exact_match_count == 2
+    assert response.semantic_fallback_used is False
+    assert len(response.results) == 2
+    assert {result.row_number for result in response.results} == {21, 22}
+    assert all(result.file_type == "csv" for result in response.results)
+
+
+def test_structured_course_search_uses_general_search_only_when_csv_match_is_zero(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    corpus_path = tmp_path / "data/processed/documents.jsonl"
+    _write_corpus(
+        corpus_path,
+        [
+            _record(
+                document_id="COURSES",
+                file_name="courses.csv",
+                file_type="csv",
+                document_type="학년별교과과정",
+                text=_course_text(
+                    "회로이론",
+                    grade=2,
+                    completion_type="전공필수",
+                    second_code="704305",
+                ),
+                row_number=22,
+            ),
+            _record(
+                document_id="PROGRAM",
+                file_name="소프트웨어융합학과_프로그램내규.pdf",
+                file_type="pdf",
+                document_type="프로그램내규",
+                text="소프트웨어융합학과 2학년 1학기 전공필수 과목 안내",
+                page_number=4,
+            ),
+            _record(
+                document_id="PROGRAM-TXT",
+                file_name="소프트웨어융합학과_프로그램내규.txt",
+                file_type="txt",
+                document_type="프로그램내규",
+                text="소프트웨어융합학과 2학년 전공필수 관련 자료",
+            ),
+        ],
+    )
+    service = _service(tmp_path)
+    service.index_corpus()
+    semantic_queries: list[str] = []
+    embed_query = service._embeddings.embed_query
+
+    def tracked_embed_query(question: str) -> list[float]:
+        semantic_queries.append(question)
+        return embed_query(question)
+
+    monkeypatch.setattr(service._embeddings, "embed_query", tracked_embed_query)
+
+    response = service.search_with_context(
+        "소프트웨어융합학과 2학년 1학기 전공필수 과목을 알려줘",
+        top_k=1,
+    )
+
+    assert response.structured_query is True
+    assert response.exact_match_count == 0
+    assert response.semantic_fallback_used is True
+    assert semantic_queries == [
+        "소프트웨어융합학과 2학년 1학기 전공필수 과목을 알려줘"
+    ]
+    assert len(response.results) == 1
+
+
+def test_empty_index_does_not_claim_semantic_fallback_was_run(
+    tmp_path: Path,
+) -> None:
+    service = _service(tmp_path)
+
+    response = service.search_with_context(
+        "소프트웨어융합학과 2학년 1학기 전공필수 과목을 알려줘",
+        department="소프트웨어융합학과",
+    )
+
+    assert response.structured_query is True
+    assert response.exact_match_count == 0
+    assert response.semantic_fallback_used is False
+    assert response.results == []
+
+
+def test_structured_course_search_supports_general_elective_completion_type(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    corpus_path = tmp_path / "data/processed/documents.jsonl"
+    _write_corpus(
+        corpus_path,
+        [
+            _record(
+                document_id="COURSES",
+                file_name="courses.csv",
+                file_type="csv",
+                document_type="학년별교과과정",
+                text=_course_text(
+                    "졸업논문",
+                    grade=4,
+                    completion_type="일반선택",
+                    first_code="704999",
+                ),
+                row_number=42,
+            ),
+            _record(
+                document_id="PROGRAM",
+                file_name="소프트웨어융합학과_프로그램내규.pdf",
+                file_type="pdf",
+                document_type="프로그램내규",
+                text="소프트웨어융합학과 4학년 졸업논문 안내",
+                page_number=8,
+            ),
+        ],
+    )
+    service = _service(tmp_path)
+    service.index_corpus()
+    monkeypatch.setattr(
+        service._embeddings,
+        "embed_query",
+        lambda _question: pytest.fail(
+            "일반선택도 정확 CSV 구조화 검색으로 처리해야 합니다."
+        ),
+    )
+
+    response = service.search_with_context(
+        "소프트웨어융합학과 4학년 1학기 일반선택 과목을 알려줘",
+        top_k=3,
+    )
+
+    assert response.structured_query is True
+    assert response.exact_match_count == 1
+    assert response.semantic_fallback_used is False
+    assert len(response.results) == 1
+    assert response.results[0].file_type == "csv"
+    assert "교과목명: 졸업논문" in response.results[0].text
+
+
+def test_duplicate_course_names_are_removed(tmp_path: Path) -> None:
+    corpus_path = tmp_path / "data/processed/documents.jsonl"
+    duplicate = _course_text(
+        "자료구조및프로그래밍",
+        grade=2,
+        completion_type="전공필수",
+        first_code="704818",
+    )
+    _write_corpus(
+        corpus_path,
+        [
+            _record(
+                document_id="COURSES",
+                file_name="courses.csv",
+                file_type="csv",
+                document_type="학년별교과과정",
+                text=duplicate,
+                row_number=1,
+            ),
+            _record(
+                document_id="COURSES",
+                file_name="courses.csv",
+                file_type="csv",
+                document_type="학년별교과과정",
+                text=(
+                    duplicate
+                    .replace(
+                        "자료구조및프로그래밍",
+                        "자료구조 및 프로그래밍",
+                    )
+                    .replace("704818", "704819")
+                ),
+                row_number=2,
+            ),
+        ],
+    )
+    service = _service(tmp_path)
+    service.index_corpus()
+
+    results = service.search("2학년 전공필수 과목", top_k=3)
+
+    assert len(results) == 1
+    assert "교과목명: 자료구조및프로그래밍" in results[0].text
+
+
+def test_administrative_semester_question_uses_general_search(
+    tmp_path: Path,
+) -> None:
+    corpus_path = tmp_path / "data/processed/documents.jsonl"
+    _write_corpus(
+        corpus_path,
+        [
+            _record(
+                document_id="COURSES",
+                file_name="courses.csv",
+                file_type="csv",
+                document_type="학년별교과과정",
+                text=_course_text(
+                    "일반 교과목",
+                    grade=1,
+                    completion_type="전공선택",
+                    first_code="001001",
+                ),
+                row_number=1,
+            ),
+            _record(
+                document_id="SCHOLARSHIP",
+                file_name="scholarship.pdf",
+                file_type="pdf",
+                document_type="장학금안내",
+                text="이번 학기 장학금 신청 기간 안내",
+                page_number=2,
+            ),
+        ],
+    )
+    service = _service(tmp_path)
+    service.index_corpus()
+
+    result = service.search("이번 학기 장학금 신청 기간", top_k=1)[0]
+
+    assert result.file_type == "pdf"
+    assert result.document_type == "장학금안내"

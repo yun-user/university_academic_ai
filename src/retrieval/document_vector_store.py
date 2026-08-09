@@ -243,6 +243,81 @@ class ChromaDocumentVectorStore:
             removed_stale_count=len(stale_ids),
         )
 
+    def list_candidates(
+        self,
+        *,
+        where: dict[str, Any] | None = None,
+    ) -> list[DocumentVectorCandidate]:
+        """임베딩 검색 없이 메타데이터 조건에 맞는 색인 청크를 반환한다."""
+
+        request: dict[str, Any] = {"include": ["documents", "metadatas"]}
+        if where is not None:
+            request["where"] = where
+        try:
+            raw: dict[str, Any] = self._collection.get(**request)
+        except Exception as error:
+            raise DocumentVectorStoreError(
+                "구조화 교과과정 조회에 실패했습니다."
+            ) from error
+
+        ids = raw.get("ids") or []
+        documents = raw.get("documents") or []
+        metadatas = raw.get("metadatas") or []
+        candidates: list[DocumentVectorCandidate] = []
+        try:
+            for chunk_id, content, metadata in zip(
+                ids,
+                documents,
+                metadatas,
+                strict=True,
+            ):
+                candidates.append(
+                    DocumentVectorCandidate(
+                        document_id=str(metadata["document_id"]),
+                        chunk_id=str(chunk_id),
+                        file_name=str(metadata["file_name"]),
+                        file_type=str(metadata["file_type"]),
+                        document_type=str(metadata["document_type"]),
+                        source_year=_optional_text(metadata, "source_year"),
+                        effective_from=_optional_text(
+                            metadata, "effective_from"
+                        ),
+                        effective_to=_optional_text(metadata, "effective_to"),
+                        department=str(metadata["department"]),
+                        admission_year_from=_optional_text(
+                            metadata, "admission_year_from"
+                        ),
+                        admission_year_to=_optional_text(
+                            metadata, "admission_year_to"
+                        ),
+                        track=_optional_text(metadata, "track"),
+                        authority=_optional_text(metadata, "authority"),
+                        is_current=_optional_bool(metadata, "is_current"),
+                        source_url=_optional_text(metadata, "source_url"),
+                        page_number=_optional_int(metadata, "page_number"),
+                        row_number=_optional_int(metadata, "row_number"),
+                        title=str(metadata["title"]),
+                        source_path=str(metadata["source_path"]),
+                        content=str(content),
+                        content_hash=str(metadata["content_hash"]),
+                        distance=0.0,
+                        score=1.0,
+                    )
+                )
+        except (KeyError, TypeError, ValueError) as error:
+            raise DocumentVectorStoreError(
+                "구조화 교과과정 메타데이터가 올바르지 않습니다."
+            ) from error
+        return sorted(
+            candidates,
+            key=lambda item: (
+                item.department.casefold(),
+                item.title.casefold(),
+                item.row_number or 0,
+                item.chunk_id,
+            ),
+        )
+
     def query(
         self,
         query_embedding: Sequence[float],

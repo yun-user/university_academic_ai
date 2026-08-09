@@ -10,6 +10,14 @@ import streamlit as st
 
 from src.config import ConfigurationError, get_settings
 from src.logging_config import configure_logging, get_logger
+from src.retrieval.course_search import (
+    format_course_codes,
+    format_credit_hours,
+    format_grade,
+    format_semesters,
+    parse_course_info,
+    truncate_text,
+)
 from src.retrieval.document_models import (
     DocumentSearchResult,
     OUTDATED_DOCUMENT_WARNING,
@@ -65,40 +73,75 @@ def _current_status_label(result: DocumentSearchResult) -> str:
     return "미지정"
 
 
-def _render_search_results(results: Sequence[DocumentSearchResult]) -> None:
-    if not results:
+def _render_search_results(
+    results: Sequence[DocumentSearchResult],
+    *,
+    structured_query: bool = False,
+    exact_match_count: int = 0,
+    semantic_fallback_used: bool = False,
+) -> None:
+    displayed_results = list(results)
+    if exact_match_count > 0:
+        st.markdown(f"조건에 맞는 과목 {exact_match_count}개를 찾았습니다")
+    elif semantic_fallback_used:
+        st.markdown("정확한 교과과정 항목을 찾지 못해 관련 자료를 표시합니다")
+
+    if not displayed_results:
         st.info(NO_RESULTS_MESSAGE)
         return
 
     st.subheader("검색 결과")
-    st.caption(f"관련 원문 {len(results)}건을 찾았습니다.")
-    for index, result in enumerate(results, start=1):
+    if not structured_query or semantic_fallback_used:
+        st.caption(f"질문과 관련성이 높은 상위 {len(displayed_results)}건입니다.")
+    for index, result in enumerate(displayed_results, start=1):
         with st.container(border=True):
-            st.markdown(f"### {index}. {result.title}")
-            location_label, location_value = _result_location(result)
-            metadata_columns = st.columns(5)
-            metadata_columns[0].metric(location_label, location_value)
-            metadata_columns[1].metric("Cosine 검색 점수", f"{result.score:.3f}")
-            metadata_columns[2].metric("문서 유형", result.document_type)
-            metadata_columns[3].metric(
-                "기준연도",
-                result.source_year or "미지정",
+            course = (
+                parse_course_info(result.text)
+                if result.file_type == "csv"
+                else None
             )
-            metadata_columns[4].metric(
-                "최신 자료 여부",
-                _current_status_label(result),
+            card_title = course.course_name if course is not None else result.title
+            _location_label, location_value = _result_location(result)
+            grade = format_grade(course)
+            completion_type = (
+                course.completion_type or "미지정"
+                if course is not None
+                else "해당 없음"
             )
-            st.caption(
-                f"학과: {result.department} · "
-                f"출처 파일: {result.file_name} · "
-                f"자료 형식: {result.file_type.upper()}"
+            match_detail = (
+                ("일치 방식", "구조화 조건 정확 일치")
+                if exact_match_count > 0
+                else ("유사도 점수", f"{result.score:.3f}")
             )
+            details = (
+                ("문서 유형", result.document_type),
+                ("학과", result.department),
+                ("기준연도", result.source_year or "미지정"),
+                ("학년과 학기", f"{grade} · {format_semesters(course)}"),
+                ("이수구분", completion_type),
+                ("학수번호", format_course_codes(course)),
+                ("학점/시수", format_credit_hours(course)),
+                ("PDF 페이지 또는 CSV 행", location_value),
+                ("출처 파일명", result.file_name),
+                match_detail,
+            )
+            st.markdown(f"### {index}. {card_title}")
+            st.markdown(
+                "\n".join(
+                    f"- **{label}:** {value}" for label, value in details
+                )
+            )
+            if result.file_type == "pdf":
+                st.markdown("**미리보기**")
+                st.write(truncate_text(result.text, limit=300))
+            elif result.file_type == "txt":
+                st.write(truncate_text(result.text, limit=300))
             if result.is_current is False:
                 st.warning(
                     result.currentness_warning
                     or OUTDATED_DOCUMENT_WARNING
                 )
-            with st.expander("원문 펼쳐보기"):
+            with st.expander("원문 보기"):
                 st.code(result.text, language=None, wrap_lines=True)
 
 
@@ -166,8 +209,9 @@ def _render_search_page(
 
     try:
         with st.spinner("관련 학사 자료를 검색하고 있습니다..."):
-            results = service.search(
+            response = service.search_with_context(
                 question,
+                top_k=3,
                 department=selected_department,
                 document_type=selected_document_type,
             )
@@ -181,7 +225,12 @@ def _render_search_page(
         st.error("검색 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.")
         return
 
-    _render_search_results(results)
+    _render_search_results(
+        response.results,
+        structured_query=response.structured_query,
+        exact_match_count=response.exact_match_count,
+        semantic_fallback_used=response.semantic_fallback_used,
+    )
 
 
 def main() -> None:
