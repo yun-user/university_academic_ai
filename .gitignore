@@ -29,6 +29,7 @@ Thumbs.db
 .vscode/
 
 .pytest_tmp/
+.pytest_runtime_tmp/
 
 # 생성 데이터
 data/vector_db/

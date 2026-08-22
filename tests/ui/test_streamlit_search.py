@@ -402,7 +402,7 @@ def test_pdf_card_shows_source_preview_and_outdated_warning() -> None:
         warning.value == "최신 자료가 아닐 수 있습니다"
         for warning in app.warning
     )
-    assert any(expander.label == "원문 보기" for expander in app.expander)
+    assert any(expander.label == "검색 근거 보기" for expander in app.expander)
     preview = next(
         markdown.value
         for markdown in app.markdown
@@ -484,11 +484,12 @@ def test_no_related_document_shows_standard_message() -> None:
     app = app.button[0].click().run()
 
     assert app.exception == []
-    assert any(
-        info.value
-        == "등록된 학사 자료에서 확인할 수 없습니다. 학교 학사 담당 부서에 문의해 주세요."
-        for info in app.info
+    assert app.subheader[0].value == "답변"
+    assert (
+        "현재 등록된 자료에서는 질문에 대한 정확한 근거를 찾지 못했습니다."
+        in _visible_text(app)
     )
+    assert app.expander == []
 
 
 def test_empty_index_does_not_call_search_service() -> None:
@@ -498,7 +499,9 @@ def test_empty_index_does_not_call_search_service() -> None:
 
     assert app.exception == []
     assert not app.error
-    assert any(
-        "등록된 학사 자료에서 확인할 수 없습니다" in info.value
-        for info in app.info
+    assert app.subheader[0].value == "답변"
+    assert (
+        "현재 등록된 자료에서 정확한 규정을 찾지 못했습니다."
+        in _visible_text(app)
     )
+    assert app.expander == []

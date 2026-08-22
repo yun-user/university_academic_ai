@@ -35,6 +35,12 @@ from src.retrieval.embeddings import (
     EmbeddingProvider,
     SentenceTransformerEmbeddingProvider,
 )
+from src.retrieval.query_intent import (
+    QuestionIntent,
+    academic_rule_relevance,
+    academic_rule_signatures,
+    classify_question_intent,
+)
 
 
 DEFAULT_DOCUMENT_COLLECTION_NAME = "academic_corpus_chunks_v1"
@@ -264,13 +270,21 @@ class DocumentSearchService:
         department: str | None,
         document_type: str | None,
         file_type: str | None = None,
+        include_global_department: bool = False,
     ) -> dict[str, Any] | None:
         conditions: list[dict[str, Any]] = []
         if department is not None:
             normalized = department.strip()
             if not normalized:
                 raise ValueError("department 필터는 비워 둘 수 없습니다.")
-            conditions.append({"department": {"$eq": normalized}})
+            if include_global_department and normalize_text(normalized) != normalize_text(
+                "전체"
+            ):
+                conditions.append(
+                    {"department": {"$in": [normalized, "전체"]}}
+                )
+            else:
+                conditions.append({"department": {"$eq": normalized}})
         if document_type is not None:
             normalized = document_type.strip()
             if not normalized:
@@ -493,20 +507,167 @@ class DocumentSearchService:
         if limit <= 0 or not 0 <= threshold <= 1:
             raise ValueError("top_k 또는 min_score가 올바르지 않습니다.")
 
-        intent = parse_course_query(question)
+        question_intent = classify_question_intent(question)
+        course_intent = parse_course_query(question)
         effective_department = (
             self._question_department(question, department)
-            if intent.is_course_query
+            if question_intent in {
+                QuestionIntent.COURSE_LIST,
+                QuestionIntent.ACADEMIC_RULE,
+            }
             else department
         )
         structured_query = (
-            intent.has_structured_conditions
+            question_intent is QuestionIntent.COURSE_LIST
+            and course_intent.has_structured_conditions
             and effective_department is not None
         )
         record_count = self.indexed_chunk_count
         if record_count == 0:
             return DocumentSearchResponse(
+                question_intent=question_intent,
                 structured_query=structured_query,
+            )
+
+        if question_intent is QuestionIntent.ACADEMIC_RULE:
+            rule_filter = self._build_search_filter(
+                department=effective_department,
+                document_type=document_type,
+                file_type="pdf",
+                include_global_department=True,
+            )
+            page_context_candidates = self._store.list_candidates(
+                where=rule_filter,
+            )
+            semantic_candidates = self._store.query(
+                self._embeddings.embed_query(question),
+                fetch_k=record_count,
+                where=rule_filter,
+            )
+            semantic_by_id = {
+                candidate.chunk_id: candidate
+                for candidate in semantic_candidates
+            }
+            # 학사 규정은 강한 lexical 조건을 모두 만족해야 하므로 semantic
+            # top-k 누락 때문에 직접 규정이 사라지지 않게 PDF 후보 전체를
+            # 판정한다. cosine 점수는 동률 정렬과 화면 표시 용도로만 보존한다.
+            rule_candidates = [
+                candidate.model_copy(
+                    update={
+                        "distance": (
+                            semantic_by_id[candidate.chunk_id].distance
+                            if candidate.chunk_id in semantic_by_id
+                            else 1.0
+                        ),
+                        "score": (
+                            semantic_by_id[candidate.chunk_id].score
+                            if candidate.chunk_id in semantic_by_id
+                            else 0.0
+                        ),
+                    }
+                )
+                for candidate in page_context_candidates
+            ]
+            directly_relevant = [
+                (candidate, academic_rule_relevance(question, candidate.content))
+                for candidate in rule_candidates
+                if candidate.file_type == "pdf"
+            ]
+            directly_relevant = [
+                (candidate, relevance)
+                for candidate, relevance in directly_relevant
+                if relevance >= 0
+            ]
+            directly_relevant.sort(
+                key=lambda item: (
+                    item[1],
+                    item[0].is_current is True,
+                    item[0].source_year or "",
+                    item[0].score,
+                ),
+                reverse=True,
+            )
+            rule_pool = self._deduplicate(
+                [candidate for candidate, _relevance in directly_relevant]
+            )
+            selected_rules: list[DocumentVectorCandidate] = []
+            seen_rule_blocks: set[
+                tuple[str, int | None, frozenset[str]]
+            ] = set()
+            for candidate in rule_pool:
+                signatures = academic_rule_signatures(candidate.content)
+                block_key = (
+                    candidate.document_id,
+                    candidate.page_number,
+                    signatures,
+                )
+                if signatures and block_key in seen_rule_blocks:
+                    continue
+                seen_rule_blocks.add(block_key)
+                selected_rules.append(candidate)
+                if len(selected_rules) == limit:
+                    break
+            page_contexts: dict[
+                tuple[str, str, int | None],
+                list[str],
+            ] = {}
+            for candidate in page_context_candidates:
+                page_key = (
+                    candidate.document_id,
+                    candidate.file_name,
+                    candidate.page_number,
+                )
+                page_contexts.setdefault(page_key, [])
+                if candidate.content not in page_contexts[page_key]:
+                    page_contexts[page_key].append(candidate.content)
+            # 원본 corpus가 있으면 청크 순서가 보존된 동일 페이지 원문을 쓴다.
+            # 색인만 배포된 환경에서는 위의 후보 청크 문맥으로 안전하게
+            # fallback한다.
+            try:
+                corpus_records = self._load_records(self._corpus_path)
+            except CorpusLoadError:
+                corpus_records = []
+            selected_page_keys = {
+                (
+                    candidate.document_id,
+                    candidate.file_name,
+                    candidate.page_number,
+                )
+                for candidate in selected_rules
+            }
+            for record in corpus_records:
+                page_key = (
+                    record.document_id,
+                    record.file_name,
+                    record.page_number,
+                )
+                if (
+                    record.file_type == "pdf"
+                    and page_key in selected_page_keys
+                    and record.text.strip()
+                ):
+                    page_contexts[page_key] = [record.text]
+            results = self._to_results(selected_rules)
+            results = [
+                result.model_copy(
+                    update={
+                        "context_text": "\n\n".join(
+                            page_contexts.get(
+                                (
+                                    result.document_id,
+                                    result.file_name,
+                                    result.page_number,
+                                ),
+                                [result.text],
+                            )
+                        )
+                    }
+                )
+                for result in results
+            ]
+            return DocumentSearchResponse(
+                results=results,
+                question_intent=question_intent,
             )
 
         if structured_query:
@@ -521,7 +682,7 @@ class DocumentSearchService:
                 self._course_candidates(
                     exact_candidates,
                     question=question,
-                    intent=intent,
+                    intent=course_intent,
                     department=effective_department,
                 )
             )
@@ -532,6 +693,7 @@ class DocumentSearchService:
                 )
                 return DocumentSearchResponse(
                     results=results,
+                    question_intent=question_intent,
                     structured_query=True,
                     exact_match_count=len(results),
                     semantic_fallback_used=False,
@@ -553,12 +715,13 @@ class DocumentSearchService:
             selected = self._deduplicate(eligible)[:limit]
             return DocumentSearchResponse(
                 results=self._to_results(selected),
+                question_intent=question_intent,
                 structured_query=True,
                 semantic_fallback_used=True,
             )
 
         if (
-            intent.is_course_query
+            question_intent is QuestionIntent.COURSE_LIST
             and not structured_query
             and document_type in {
                 None,
@@ -569,14 +732,17 @@ class DocumentSearchService:
                 self._course_candidates(
                     eligible,
                     question=question,
-                    intent=intent,
+                    intent=course_intent,
                     department=effective_department,
                 )
             )
             course_target = min(3, limit)
             if len(course_candidates) >= course_target:
                 results = self._to_results(course_candidates[:limit])
-                return DocumentSearchResponse(results=results)
+                return DocumentSearchResponse(
+                    results=results,
+                    question_intent=question_intent,
+                )
 
             selected = list(course_candidates)
             selected_ids = {item.chunk_id for item in selected}
@@ -591,12 +757,14 @@ class DocumentSearchService:
             selected.extend(supplemental[: max(0, limit - len(selected))])
             selected = self._deduplicate(selected)
             return DocumentSearchResponse(
-                results=self._to_results(selected[:limit])
+                results=self._to_results(selected[:limit]),
+                question_intent=question_intent,
             )
 
         selected = self._deduplicate(eligible)[:limit]
         return DocumentSearchResponse(
             results=self._to_results(selected),
+            question_intent=question_intent,
         )
 
     def search(

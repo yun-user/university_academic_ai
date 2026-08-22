@@ -6,6 +6,11 @@ import re
 import unicodedata
 from dataclasses import dataclass
 
+from src.retrieval.query_intent import (
+    QuestionIntent,
+    classify_question_intent,
+)
+
 
 COURSE_QUERY_TERMS = (
     "학년",
@@ -24,17 +29,6 @@ COURSE_DOCUMENT_TYPE = "학년별교과과정"
 _GRADE_PATTERN = re.compile(r"(?<!\d)([1-4])\s*학년")
 _SEMESTER_PATTERN = re.compile(r"(?<!\d)([12])\s*학기")
 _TOKEN_PATTERN = re.compile(r"[0-9A-Za-z가-힣]+")
-_ADMINISTRATIVE_TERMS = ("장학금", "휴학", "복학", "신청기간", "신청 기간")
-_EXPLICIT_COURSE_TERMS = (
-    "이수구분",
-    "전공과목",
-    "전공필수",
-    "전공선택",
-    "교과목",
-    "과목",
-    "학수번호",
-    "시수",
-)
 _COMPLETION_TYPE_TERMS = (
     ("전공필수", ("전공필수",)),
     ("전공선택", ("전공선택",)),
@@ -105,27 +99,12 @@ def parse_course_query(question: str) -> CourseQueryIntent:
 
     normalized = normalize_text(question)
     compact = normalized.replace(" ", "")
-    strong_terms = tuple(term for term in COURSE_QUERY_TERMS if term != "학점")
-    is_course_query = any(term in compact for term in COURSE_QUERY_TERMS)
-
-    # "졸업 전공학점"은 기존 졸업요건 검색을 유지한다. 학점 외에 교과과정
-    # 단서가 함께 있으면 정상적으로 교과과정 질문으로 처리한다.
-    if "졸업" in compact and not any(term in compact for term in strong_terms):
-        is_course_query = False
+    is_course_query = (
+        classify_question_intent(question) is QuestionIntent.COURSE_LIST
+    )
 
     grade_match = _GRADE_PATTERN.search(normalized)
     semester_match = _SEMESTER_PATTERN.search(normalized)
-    administrative_context = any(
-        term in normalized or term.replace(" ", "") in compact
-        for term in _ADMINISTRATIVE_TERMS
-    )
-    explicit_course_context = bool(
-        grade_match
-        or semester_match
-        or any(term in compact for term in _EXPLICIT_COURSE_TERMS)
-    )
-    if administrative_context and not explicit_course_context:
-        is_course_query = False
     completion_types = next(
         (
             values

@@ -7,6 +7,7 @@ from typing import Any, Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from src.models import NonEmptyText, Sha256Hex, StrictModel
+from src.retrieval.query_intent import QuestionIntent
 
 
 DocumentFileType = Literal["pdf", "csv", "txt"]
@@ -150,6 +151,9 @@ class DocumentSearchResult(StrictModel):
     title: NonEmptyText
     source_path: NonEmptyText
     text: NonEmptyText
+    # 규정 답변에서 동일 PDF 페이지의 제목·표 머리말 등 인접 청크를
+    # 적용 범위 확인에만 사용한다. 실제 인용 원문은 ``text``로 유지한다.
+    context_text: str | None = None
     score: float = Field(ge=-1.0, le=1.0)
     score_kind: Literal["cosine_similarity", "structured_exact"] = (
         "cosine_similarity"
@@ -162,6 +166,7 @@ class DocumentSearchResponse(StrictModel):
     """검색 결과와 구조화 교과과정 검색 분기 정보를 함께 전달한다."""
 
     results: list[DocumentSearchResult] = Field(default_factory=list)
+    question_intent: QuestionIntent = QuestionIntent.GENERAL_SEARCH
     structured_query: bool = False
     exact_match_count: int = Field(default=0, ge=0)
     semantic_fallback_used: bool = False

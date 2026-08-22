@@ -1,4 +1,4 @@
-"""통합 PDF·CSV·TXT 원문을 출처와 함께 보여주는 Streamlit 검색 화면."""
+"""검색 근거를 결정적 한국어 답변과 함께 보여주는 Streamlit 화면."""
 
 from __future__ import annotations
 
@@ -8,6 +8,19 @@ from collections.abc import Sequence
 
 import streamlit as st
 
+from src.answering import (
+    AnswerMode,
+    AnswerResponse,
+    AnswerService,
+    AnswerSource,
+    LLMAnswerService,
+    build_answer_service,
+    deduplicate_answer_sources,
+)
+from src.answering.answer_service import (
+    NO_ACADEMIC_RULE_MESSAGE,
+    OUTDATED_ANSWER_WARNING,
+)
 from src.config import ConfigurationError, get_settings
 from src.logging_config import configure_logging, get_logger
 from src.retrieval.course_search import (
@@ -28,12 +41,15 @@ from src.retrieval.document_search_service import (
 )
 from src.retrieval.document_vector_store import DocumentVectorStoreError
 from src.retrieval.embeddings import EmbeddingError
+from src.retrieval.query_intent import (
+    QuestionIntent,
+    classify_question_intent,
+)
 
 
 DISCLAIMER = "본 서비스의 답변은 참고용이며, 공식 학사 행정 답변을 대신하지 않습니다."
 NO_RESULTS_MESSAGE = (
-    "등록된 학사 자료에서 확인할 수 없습니다. "
-    "학교 학사 담당 부서에 문의해 주세요."
+    "현재 등록된 자료에서는 질문에 대한 정확한 근거를 찾지 못했습니다."
 )
 
 
@@ -79,6 +95,7 @@ def _render_search_results(
     structured_query: bool = False,
     exact_match_count: int = 0,
     semantic_fallback_used: bool = False,
+    expand_raw_text: bool = True,
 ) -> None:
     displayed_results = list(results)
     if exact_match_count > 0:
@@ -141,8 +158,69 @@ def _render_search_results(
                     result.currentness_warning
                     or OUTDATED_DOCUMENT_WARNING
                 )
-            with st.expander("원문 보기"):
+            if expand_raw_text:
+                with st.expander("원문 보기"):
+                    st.code(result.text, language=None, wrap_lines=True)
+            else:
+                st.markdown("**원문**")
                 st.code(result.text, language=None, wrap_lines=True)
+                if result.context_text and result.context_text != result.text:
+                    st.markdown("**같은 페이지의 적용 범위 문맥**")
+                    st.code(
+                        result.context_text,
+                        language=None,
+                        wrap_lines=True,
+                    )
+
+
+def _render_answer(text: str) -> None:
+    st.subheader("답변")
+    st.markdown(_answer_body_for_display(text))
+
+
+def _answer_body_for_display(text: str) -> str:
+    """이전 답변 형식의 내장 출처 블록도 화면에서는 한 번만 보이게 한다."""
+
+    body = text
+    trailing_warning = OUTDATED_ANSWER_WARNING if OUTDATED_ANSWER_WARNING in text else ""
+    for heading in ("\n답변에 사용된 출처:\n", "\n출처:\n"):
+        if heading not in body:
+            continue
+        body = body.split(heading, 1)[0].rstrip()
+        break
+    if trailing_warning and trailing_warning not in body:
+        body = f"{body}\n\n{trailing_warning}"
+    return body
+
+
+def _answer_source_location(source: AnswerSource) -> str:
+    if source.page_number is not None:
+        return f"PDF {source.page_number}쪽"
+    if source.row_number is not None:
+        return f"CSV {source.row_number}행"
+    return "TXT 문서 전체"
+
+
+def _answer_source_currentness(source: AnswerSource) -> str:
+    if source.is_current is True:
+        return "최신 자료"
+    if source.is_current is False:
+        return "최신 자료가 아닐 수 있음"
+    return "최신 여부 미지정"
+
+
+def _render_answer_sources(sources: Sequence[AnswerSource]) -> None:
+    """최종 답변에 사용된 출처를 전체 검색 근거와 분리해 표시한다."""
+
+    if not sources:
+        return
+    st.markdown("**출처**")
+    for source in deduplicate_answer_sources(sources):
+        st.markdown(
+            f"- {source.file_name} · {_answer_source_location(source)} · "
+            f"기준연도 {source.source_year or '미지정'} · "
+            f"{_answer_source_currentness(source)}"
+        )
 
 
 def _render_search_page(
@@ -150,17 +228,27 @@ def _render_search_page(
     *,
     app_name: str,
     logger: logging.Logger | None = None,
+    answer_service: AnswerService | LLMAnswerService | None = None,
+    answer_mode_label: str = "기본 근거 기반 답변",
+    llm_requested: bool = False,
 ) -> None:
     logger = logger or get_logger(__name__)
+    selected_answer_service = answer_service or AnswerService(service)
     indexed_chunk_count = service.indexed_chunk_count
     departments = service.available_departments()
     document_types = service.available_document_types()
 
     st.title(app_name)
-    st.caption(
-        "AI 답변을 생성하지 않고, 등록된 PDF·CSV·TXT 학사 자료에서 질문과 "
-        "관련된 원문과 출처 위치를 함께 보여드립니다."
-    )
+    if answer_mode_label == "LLM 보조 답변":
+        st.caption(
+            "등록된 PDF·CSV·TXT 검색 근거 안에서만 LLM이 답변을 정리하며, "
+            "사용할 수 없으면 기본 답변으로 자동 전환합니다."
+        )
+    else:
+        st.caption(
+            "등록된 PDF·CSV·TXT 학사 자료의 검색 근거만으로 "
+            "결정적 답변과 출처 위치를 함께 보여드립니다."
+        )
     st.warning(DISCLAIMER)
 
     with st.form("document_search_form", clear_on_submit=False):
@@ -190,8 +278,14 @@ def _render_search_page(
     with st.sidebar:
         st.header("검색 상태")
         st.metric("검색 가능한 청크", f"{indexed_chunk_count:,}개")
-        st.write("실행 모드: `검색 전용`")
-        st.caption("LLM 답변 생성 없이 관련 원문만 표시합니다.")
+        st.markdown("**답변 모드**")
+        st.write(answer_mode_label)
+        if answer_mode_label == "LLM 보조 답변":
+            st.caption("LLM 오류가 발생하면 기본 근거 기반 답변으로 전환합니다.")
+        elif llm_requested:
+            st.caption("LLM을 사용할 수 없어 기본 답변 모드로 전환했습니다.")
+        else:
+            st.caption("외부 LLM을 호출하지 않고 검색 근거만으로 답변합니다.")
 
     if not submitted:
         if indexed_chunk_count == 0:
@@ -204,12 +298,17 @@ def _render_search_page(
         st.warning("검색할 질문을 입력해 주세요.")
         return
     if indexed_chunk_count == 0:
-        st.info(NO_RESULTS_MESSAGE)
+        empty_message = (
+            NO_ACADEMIC_RULE_MESSAGE
+            if classify_question_intent(question) is QuestionIntent.ACADEMIC_RULE
+            else NO_RESULTS_MESSAGE
+        )
+        _render_answer(empty_message)
         return
 
     try:
-        with st.spinner("관련 학사 자료를 검색하고 있습니다..."):
-            response = service.search_with_context(
+        with st.spinner("관련 학사 자료를 검색하고 답변을 정리하고 있습니다..."):
+            answer: AnswerResponse = selected_answer_service.answer_question(
                 question,
                 top_k=3,
                 department=selected_department,
@@ -225,12 +324,26 @@ def _render_search_page(
         st.error("검색 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.")
         return
 
-    _render_search_results(
-        response.results,
-        structured_query=response.structured_query,
-        exact_match_count=response.exact_match_count,
-        semantic_fallback_used=response.semantic_fallback_used,
+    _render_answer(answer.text)
+    _render_answer_sources(answer.sources)
+    actual_mode_label = (
+        "LLM 보조 답변"
+        if answer.answer_mode is AnswerMode.LLM
+        else "기본 근거 기반 답변"
     )
+    st.sidebar.caption(f"현재 응답 모드: {actual_mode_label}")
+    if llm_requested and answer.answer_mode is AnswerMode.DETERMINISTIC:
+        st.info("이번 답변은 기본 근거 기반 답변 모드로 제공됩니다.")
+    response = answer.search_response
+    if response.results:
+        with st.expander("검색 근거 보기"):
+            _render_search_results(
+                response.results,
+                structured_query=response.structured_query,
+                exact_match_count=response.exact_match_count,
+                semantic_fallback_used=response.semantic_fallback_used,
+                expand_raw_text=False,
+            )
 
 
 def main() -> None:
@@ -254,16 +367,29 @@ def main() -> None:
     logger = get_logger(__name__)
 
     logger.info(
-        "application_started mode=retrieval-only environment=%s",
+        "application_started mode=%s environment=%s",
+        settings.runtime_mode,
         settings.environment,
     )
 
     try:
         service = _get_search_service()
+        answer_service = build_answer_service(
+            service,
+            settings,
+            logger=logger,
+        )
         _render_search_page(
             service,
             app_name=settings.app_name,
             logger=logger,
+            answer_service=answer_service,
+            answer_mode_label=(
+                "LLM 보조 답변"
+                if settings.llm_available
+                else "기본 근거 기반 답변"
+            ),
+            llm_requested=settings.llm_enabled,
         )
     except Exception:
         logger.exception("search_ui_initialization_failed")

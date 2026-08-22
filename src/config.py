@@ -57,6 +57,7 @@ class Settings:
     reranker_model_name: str | None
     reranker_model_revision: str | None
 
+    llm_enabled: bool
     llm_provider: str
     llm_model_name: str | None
     llm_base_url: str | None
@@ -85,16 +86,26 @@ class Settings:
     ocr_languages: str
 
     @property
-    def llm_enabled(self) -> bool:
-        """LLM 생성에 필요한 최소 설정이 갖춰졌는지 반환한다."""
+    def llm_configured(self) -> bool:
+        """LLM 생성에 필요한 비밀값과 모델명이 있는지 반환한다."""
 
         return bool(self.llm_api_key and self.llm_model_name)
+
+    @property
+    def llm_available(self) -> bool:
+        """명시적 활성화와 필수 설정이 모두 갖춰졌는지 반환한다."""
+
+        provider_supported = self.llm_provider.strip().lower() in {
+            "openai",
+            "openai_compatible",
+        }
+        return self.llm_enabled and self.llm_configured and provider_supported
 
     @property
     def runtime_mode(self) -> str:
         """화면과 로그에서 사용할 안전한 실행 모드 이름."""
 
-        return "generation-enabled" if self.llm_enabled else "retrieval-only"
+        return "generation-enabled" if self.llm_available else "retrieval-only"
 
     @property
     def vector_db_path(self) -> Path:
@@ -121,7 +132,9 @@ class Settings:
             "environment": self.environment,
             "log_level": self.log_level,
             "runtime_mode": self.runtime_mode,
-            "llm_configured": self.llm_enabled,
+            "llm_enabled": self.llm_enabled,
+            "llm_configured": self.llm_configured,
+            "llm_available": self.llm_available,
             "embedding_model": self.embedding_model_name,
             "reranker_enabled": self.reranker_enabled,
         }
@@ -239,11 +252,6 @@ def _validate(settings: Settings) -> Settings:
         raise ConfigurationError(
             "RERANKER_ENABLED=true이면 RERANKER_MODEL_NAME이 필요합니다."
         )
-    if settings.llm_api_key and not settings.llm_model_name:
-        raise ConfigurationError(
-            "LLM_API_KEY가 설정되면 LLM_MODEL_NAME도 설정해야 합니다."
-        )
-
     positive_values = {
         "LLM_TIMEOUT_SECONDS": settings.llm_timeout_seconds,
         "CHUNK_TARGET_CHARS": settings.chunk_target_chars,
@@ -384,6 +392,7 @@ def get_settings() -> Settings:
         reranker_model_revision=_env_optional_text(
             "RERANKER_MODEL_REVISION", _required(reranker, "revision")
         ),
+        llm_enabled=_env_bool("LLM_ENABLED", _required(llm, "enabled")),
         llm_provider=_env_text("LLM_PROVIDER", _required(llm, "provider")),
         llm_model_name=_env_optional_text(
             "LLM_MODEL_NAME", _required(llm, "name")

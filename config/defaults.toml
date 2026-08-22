@@ -29,6 +29,7 @@ name = ""
 revision = ""
 
 [models.llm]
+enabled = false
 provider = "openai_compatible"
 name = ""
 base_url = ""
