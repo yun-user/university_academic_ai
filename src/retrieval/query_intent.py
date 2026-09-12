@@ -53,12 +53,48 @@ def _compact(value: str) -> str:
     return re.sub(r"\s+", "", _normalize(value))
 
 
+def graduation_topic(question: str) -> str | None:
+    """Interpret conversational degree-requirement questions without rewriting
+    the user's text or inferring their year, academic record, or program.
+    """
+    compact = _compact(question)
+    # These concern events, employment, or a particular course, not degree
+    # requirements. Never answer them with the reviewed graduation table.
+    if re.search(r"졸업식|졸업사진|졸업앨범|졸업여행|졸업후|졸업생취업", compact):
+        return None
+    if re.search(r"졸업(논문|프로젝트|작품)", compact):
+        return None
+    quantity = bool(re.search(r"몇|얼마|최소|필요|채워|채우|이수|들어|들으", compact))
+    mentions_graduation = "졸업" in compact
+    asks_requirements = bool(re.search(
+        r"요건|조건|기준|학점|이수|필요|해야|하면|하려|할려|어떻|어떡|뭐|무엇|뭘|알려|설명|궁금|가능", compact))
+    if not ((mentions_graduation and asks_requirements)
+            or ("전공" in compact and quantity and re.search(r"학점|얼마나.*(들|이수|채)|몇학점", compact))):
+        return None
+    if re.search(r"영어|어학|토익|toeic|opic|토플|teps", compact):
+        return "english"
+    if "설계" in compact:
+        return "design"
+    if "전공" in compact and (quantity or "학점" in compact) and "전공필수" not in compact:
+        return "major_credits"
+    if quantity and re.search(r"총학점|전체학점|총몇|모두몇|학점.*(몇|얼마)|몇학점", compact):
+        return "total_credits"
+    return "overview"
+
+
+def is_graduation_question(question: str) -> bool:
+    return graduation_topic(question) is not None
+
+
 def classify_question_intent(question: str) -> QuestionIntent:
     """규정 강신호를 최우선으로 적용한 뒤 실제 과목 조회만 분류한다."""
 
     compact = _compact(question)
     if not compact:
         return QuestionIntent.GENERAL_SEARCH
+
+    if is_graduation_question(question):
+        return QuestionIntent.ACADEMIC_RULE
 
     if any(pattern.search(compact) for pattern in _ACADEMIC_RULE_PATTERNS):
         return QuestionIntent.ACADEMIC_RULE
@@ -112,7 +148,7 @@ def academic_rule_anchor_groups(question: str) -> tuple[tuple[str, ...], ...]:
             groups.append(("인정", "이수구분", "변경"))
     if re.search(r"(학사|성적)경고", compact):
         groups.append(("학사경고", "성적경고"))
-    if "졸업" in compact and re.search(r"요건|조건|기준|학점", compact):
+    if is_graduation_question(question):
         groups.extend(
             (
                 ("졸업", "졸업요건"),

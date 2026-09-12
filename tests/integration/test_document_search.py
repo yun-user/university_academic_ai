@@ -166,6 +166,47 @@ def _service(
     return service
 
 
+def test_release_exact_identifier_ignores_dense_rank_and_respects_department(tmp_path):
+    service = _service(tmp_path)
+    records = [_record(document_id=f"course-{i}", file_name=f"{i}.csv", file_type="csv",
+        document_type="학년별교과과정", department=department, row_number=1,
+        text=_course_text("자료구조", grade=2, completion_type="전공필수", first_code="001234"))
+        for i, department in enumerate(["학과A", "학과B"])]
+    _write_corpus(service.corpus_path, records)
+    service.index_corpus()
+    response = service.search_with_context("학수번호 001234 교과목 정보", department="학과A", top_k=1)
+    assert response.exact_match_count == 1
+    assert response.results[0].department == "학과A"
+    assert response.results[0].score_kind == "structured_exact"
+    assert not service.search("학수번호 009999 교과목 정보")
+
+
+def test_release_hybrid_retrieves_keyword_then_removes_disabled_chunk(tmp_path):
+    service = _service(tmp_path)
+    service._search_mode = "hybrid"
+    records = [_record(document_id="special", file_name="notice.txt", file_type="txt",
+                       document_type="안내", text="특별한 우주항공연구 신청 안내")]
+    _write_corpus(service.corpus_path, records)
+    service.index_corpus()
+    assert service.search("우주항공연구")
+    _write_corpus(service.corpus_path, [])
+    service.index_corpus()
+    assert not service.search("우주항공연구")
+
+
+def test_release_official_web_rule_keeps_url_and_excludes_unofficial_seed(tmp_path):
+    from src.answering.answer_service import AnswerService
+    service = _service(tmp_path)
+    rows = [_record(document_id="web", file_name="notice.txt", file_type="txt",
+                    document_type="공개공지", text="장학금 선발 기준은 직전 학기 성적을 기준으로 선정합니다.")]
+    rows[0]["source_url"] = "https://school.example/scholarship"
+    _write_corpus(service.corpus_path, rows)
+    service.index_corpus()
+    answer = AnswerService(service).answer_question("장학금 선발 기준")
+    assert answer.sources[0].source_url == rows[0]["source_url"]
+    assert answer.sources[0].page_number is None
+
+
 def test_indexes_and_searches_pdf_csv_and_txt_with_source_metadata(
     tmp_path: Path,
 ) -> None:
@@ -992,3 +1033,72 @@ def test_administrative_semester_question_uses_general_search(
 
     assert result.file_type == "pdf"
     assert result.document_type == "장학금안내"
+
+
+@pytest.mark.parametrize("query,dropdown", [
+    ("소프트웨어융합학과 졸업요건", None),
+    ("소프트웨어 융합 학과 졸업요건", None),
+    ("소프트웨어융합학과 졸업요건", "디자인엔지니어링학과"),
+    ("졸업요건", "소프트웨어융합학과"),
+])
+def test_department_scoped_rules_never_include_global_or_other_departments(tmp_path, query, dropdown):
+    from src.answering.answer_service import AnswerService
+    service = _service(tmp_path)
+    rows = [_record(document_id=name, file_name=name+".pdf", file_type="pdf",
+        document_type="학사규정", page_number=1, department=dept, text=text)
+        for name, dept, text in [
+            ("software", "소프트웨어융합학과", "소프트웨어융합학과 졸업요건은 전공 60학점 이상 이수입니다."),
+            ("design", "디자인엔지니어링학과", "디자인엔지니어링학과 졸업요건은 디자인실습 40학점 이수입니다."),
+            ("global", "전체", "디자인엔지니어링 전공 졸업요건은 스케칭과시각적사고 이수입니다."),
+        ]]
+    _write_corpus(service.corpus_path, rows)
+    service.index_corpus()
+    response = service.search_with_context(query, department=dropdown)
+    assert response.results
+    assert {r.document_id for r in response.results} == {"software"}
+    answer = AnswerService(service).answer_question(query, department=dropdown)
+    assert "디자인" not in answer.text
+    assert "스케칭" not in answer.text
+    assert not service.search("존재하지않는학과 졸업요건")
+    _write_corpus(service.corpus_path, rows[1:])
+    service.index_corpus()
+    assert not service.search(query, department="소프트웨어융합학과")
+
+
+def test_graduation_table_keeps_body_and_outranks_guidance(tmp_path):
+    service = _service(tmp_path, chunk_size=100, chunk_overlap=10)
+    table = "<표 5> 공학교육인증(심화 프로그램) 졸업요건\n" + "영역별 이수 조건을 확인합니다. " * 12 + "총 132학점 이상 이수하여야 합니다."
+    rows = [_record(document_id="rules", file_name="규정.pdf", file_type="pdf", document_type="학사규정",
+        page_number=16, text=table), _record(document_id="guidance", file_name="지도.pdf", file_type="pdf",
+        document_type="학사규정", page_number=10, text="학생 지도 시 졸업요건을 고려하여 과목을 선택하고 학습계획서를 작성합니다.")]
+    _write_corpus(service.corpus_path, rows)
+    service.index_corpus()
+    response = service.search_with_context("소프트웨어융합학과 졸업요건", top_k=1)
+    assert len(response.results) == 1
+    assert response.results[0].page_number == 16
+    assert response.results[0].text == table
+    assert "132학점" in response.results[0].text
+
+
+
+def test_unscoped_graduation_uses_single_department_or_requests_scope(tmp_path):
+    from src.answering.answer_service import AnswerService
+    service = _service(tmp_path)
+    rows = [_record(document_id="software", file_name="내규.pdf", file_type="pdf", document_type="학사규정",
+        page_number=16, text="<표 5> 심화과정 졸업요건\n 전공 54학점을 포함하여 총 132학점 이수하여야 함."),
+        _record(document_id="global", file_name="전체.pdf", file_type="pdf", document_type="학사규정",
+        department="전체", page_number=26, text="디자인엔지니어링 졸업요건은 전공 60학점 이수입니다.")]
+    _write_corpus(service.corpus_path, rows)
+    service.index_corpus()
+    question = "졸업할려면 전공학점을 몇 학점 들어야 해?"
+    results = service.search(question)
+    assert results and {r.document_id for r in results} == {"software"}
+    rows.append(_record(document_id="design", file_name="디자인.pdf", file_type="pdf", document_type="학사규정",
+        department="디자인학과", page_number=1, text="디자인학과 졸업요건은 전공 60학점 이수입니다."))
+    _write_corpus(service.corpus_path, rows)
+    service.index_corpus()
+    answer = AnswerService(service).answer_question(question)
+    assert not answer.search_response.results
+    assert "학과를 선택" in answer.text
+    assert "60학점" not in answer.text
+    assert service.search(question, department="소프트웨어융합학과")

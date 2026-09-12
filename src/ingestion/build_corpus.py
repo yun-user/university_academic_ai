@@ -880,7 +880,7 @@ def _write_outputs(
     return documents_path, report_path
 
 
-def build_corpus(
+def _build_corpus(
     project_root: str | Path = PROJECT_ROOT,
 ) -> CorpusBuildResult:
     """프로젝트의 raw 자료 전체를 읽고 JSONL corpus와 report를 만든다."""
@@ -933,6 +933,8 @@ def build_corpus(
         )
 
     _add_unmatched_manifest_warnings(catalog, report)
+    from src.ingestion.registry import augment_corpus
+    documents = augment_corpus(root, documents, report)
     report["document_records"] = len(documents)
     documents_path, report_path = _write_outputs(
         documents,
@@ -945,6 +947,12 @@ def build_corpus(
         documents_path=documents_path,
         report_path=report_path,
     )
+
+
+def build_corpus(project_root: str | Path = PROJECT_ROOT) -> CorpusBuildResult:
+    from src.operations import project_lock
+    with project_lock(Path(project_root).resolve()):
+        return _build_corpus(project_root)
 
 
 def main() -> int:

@@ -15,7 +15,8 @@ __pycache__/
 .pytest_cache/
 
 # Streamlit 설정
-.streamlit/
+.streamlit/*
+!.streamlit/config.toml
 
 # 벡터 데이터베이스
 data/vector_db/
@@ -49,3 +50,5 @@ __pycache__/
 .env
 
 data/raw/
+data/uploads/
+data/tessdata/

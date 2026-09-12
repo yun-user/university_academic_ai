@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import atexit
 import logging
+import re
+from urllib.parse import urlsplit
 from collections.abc import Sequence
 
 import streamlit as st
+from src.runtime import get_search_service as _get_search_service
 
 from src.answering import (
     AnswerMode,
@@ -58,15 +61,6 @@ def _render_configuration_error(error: ConfigurationError) -> None:
     st.error("애플리케이션 설정을 불러오지 못했습니다.")
     st.code(str(error), language=None)
     st.info(".env와 config/defaults.toml의 값을 확인한 뒤 다시 실행하세요.")
-
-
-@st.cache_resource(show_spinner=False)
-def _get_search_service() -> DocumentSearchService:
-    """Streamlit 재실행 간 모델과 Chroma client를 재사용한다."""
-
-    service = DocumentSearchService.from_settings(get_settings())
-    atexit.register(service.close)
-    return service
 
 
 def _document_type_label(document_type: str | None) -> str:
@@ -143,6 +137,8 @@ def _render_search_results(
                 match_detail,
             )
             st.markdown(f"### {index}. {card_title}")
+            if _safe_source_url(result.source_url):
+                st.link_button("공식 원문 열기", result.source_url)
             st.markdown(
                 "\n".join(
                     f"- **{label}:** {value}" for label, value in details
@@ -190,7 +186,23 @@ def _answer_body_for_display(text: str) -> str:
         break
     if trailing_warning and trailing_warning not in body:
         body = f"{body}\n\n{trailing_warning}"
+    citation_ids = list(dict.fromkeys(re.findall(r"\[근거:([^\]]+)\]", body)))
+    for index, chunk_id in enumerate(citation_ids, 1):
+        body = body.replace(f"[근거:{chunk_id}]", f"[출처 {index}]")
+    # GFM can interpret paired single tildes as strikethrough. Display
+    # numerical ranges with an en dash while preserving the source text.
+    body = re.sub(r"(?<=\d)\s*~\s*(?=\d)", "–", body)
     return body
+
+
+def _safe_source_url(value):
+    if not value:
+        return False
+    try:
+        parts = urlsplit(value)
+        return parts.scheme == "https" and bool(parts.hostname) and not parts.username and not parts.password
+    except ValueError:
+        return False
 
 
 def _answer_source_location(source: AnswerSource) -> str:
@@ -221,6 +233,8 @@ def _render_answer_sources(sources: Sequence[AnswerSource]) -> None:
             f"기준연도 {source.source_year or '미지정'} · "
             f"{_answer_source_currentness(source)}"
         )
+        if _safe_source_url(source.source_url):
+            st.link_button("출처 웹페이지", source.source_url)
 
 
 def _render_search_page(
@@ -236,9 +250,11 @@ def _render_search_page(
     selected_answer_service = answer_service or AnswerService(service)
     indexed_chunk_count = service.indexed_chunk_count
     departments = service.available_departments()
+    department_options = [None, *[d for d in departments if d != "전체"]]
     document_types = service.available_document_types()
 
     st.title(app_name)
+    st.caption("ACADEMIC EVIDENCE · 문서로 확인하는 학사정보")
     if answer_mode_label == "LLM 보조 답변":
         st.caption(
             "등록된 PDF·CSV·TXT 검색 근거 안에서만 LLM이 답변을 정리하며, "
@@ -260,7 +276,8 @@ def _render_search_page(
         with filter_columns[0]:
             selected_department = st.selectbox(
                 "학과 선택",
-                options=[None, *departments],
+                options=department_options,
+                index=1 if len(department_options) == 2 else 0,
                 format_func=lambda value: "전체 학과" if value is None else value,
             )
         with filter_columns[1]:
@@ -278,6 +295,7 @@ def _render_search_page(
     with st.sidebar:
         st.header("검색 상태")
         st.metric("검색 가능한 청크", f"{indexed_chunk_count:,}개")
+        st.caption("유사도는 정답 확률이 아닙니다. 적용연도와 원문을 함께 확인하세요.")
         st.markdown("**답변 모드**")
         st.write(answer_mode_label)
         if answer_mode_label == "LLM 보조 답변":

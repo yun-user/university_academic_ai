@@ -49,6 +49,7 @@ class AnswerSource(StrictModel):
     row_number: int | None = Field(default=None, ge=1)
     is_current: bool | None = None
     excerpt: NonEmptyText
+    source_url: str | None = None
 
     @model_validator(mode="after")
     def validate_locator(self) -> "AnswerSource":
@@ -129,6 +130,7 @@ class AnswerResponse(StrictModel):
                     source.page_number,
                     source.row_number,
                     source.is_current,
+                    source.source_url,
                 )
                 result_locator = (
                     result.file_name,
@@ -137,6 +139,7 @@ class AnswerResponse(StrictModel):
                     result.page_number,
                     result.row_number,
                     result.is_current,
+                    result.source_url,
                 )
                 if source_locator != result_locator:
                     raise ValueError("답변 출처 메타데이터가 검색 결과와 다릅니다.")

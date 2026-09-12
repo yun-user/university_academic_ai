@@ -166,6 +166,7 @@ class DocumentSearchResponse(StrictModel):
     """검색 결과와 구조화 교과과정 검색 분기 정보를 함께 전달한다."""
 
     results: list[DocumentSearchResult] = Field(default_factory=list)
+    clarification_message: str | None = None
     question_intent: QuestionIntent = QuestionIntent.GENERAL_SEARCH
     structured_query: bool = False
     exact_match_count: int = Field(default=0, ge=0)

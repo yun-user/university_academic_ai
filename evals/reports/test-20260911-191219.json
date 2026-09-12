@@ -1,0 +1,1418 @@
+{
+  "created_at": "2026-09-11T10:12:07.428967+00:00",
+  "split": "test",
+  "dataset_sha256": "8304df1049005fd44182488f9f7bdefeeda7d94b131e46f13f50843948c65dad",
+  "top_k": 5,
+  "threshold": 0.35,
+  "embedding_model": "intfloat/multilingual-e5-base",
+  "limitation": "자동 생성 회귀 질문입니다. 실제 학생 질문을 사람이 검토한 품질 평가를 대체하지 않습니다.",
+  "modes": {
+    "dense": {
+      "metrics": {
+        "questions": 41,
+        "answerable": 38,
+        "unanswerable": 3,
+        "hit_at_k": 1.0,
+        "mrr": 1.0,
+        "correct_rejection_rate": 0.6666666666666666
+      },
+      "details": [
+        {
+          "id": "course-001-1",
+          "question": "논리적사고와글쓰기(공학) / 공학글쓰기 (중 택1) 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.05198560000008001,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 1,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-001-2",
+          "question": "학수번호 001012 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.008009900000160997,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 1,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-004-1",
+          "question": "사회와 경제(2영역) 경제학입문 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.0067464999997355335,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 4,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-004-2",
+          "question": "학수번호 002442 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.006391599999915343,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 4,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-007-1",
+          "question": "대학수학(1) 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.007205700000213255,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 7,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-007-2",
+          "question": "학수번호 012201 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.0069434000001820095,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 7,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-010-1",
+          "question": "대학물리실험(1) 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.007859999999709544,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 10,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-010-2",
+          "question": "학수번호 012103 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.007233299999825249,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 10,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-013-1",
+          "question": "파이썬프로그래밍(입문) 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.007313099999919359,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 13,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-013-2",
+          "question": "학수번호 012316 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.006502400000044872,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 13,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-016-1",
+          "question": "회로이론 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.006113700000241806,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 16,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-016-2",
+          "question": "학수번호 704305 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.005997799999931885,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 16,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-019-1",
+          "question": "이산수학 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.006611100000100123,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 19,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-019-2",
+          "question": "학수번호 012206 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.005781200000001263,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 19,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-022-1",
+          "question": "자료구조 및 프로그래밍 실습 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.006304199999703997,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 22,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-022-2",
+          "question": "학수번호 704818 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.006015200000092591,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 22,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-025-1",
+          "question": "디지털공학 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.00582910000002812,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 25,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-025-2",
+          "question": "학수번호 704509 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.006210400000327354,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 25,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-028-1",
+          "question": "자바프로그래밍 및 실습 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.00664809999989302,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 28,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-028-2",
+          "question": "학수번호 704827 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.006940100000065286,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 28,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-031-1",
+          "question": "공학의이해(7영역) CTO특강 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.006988300000102754,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 31,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-031-2",
+          "question": "학수번호 008753 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.006865599999855476,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 31,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-034-1",
+          "question": "운영체제 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.006484900000032212,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 34,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-034-2",
+          "question": "학수번호 704512 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.005813499999931082,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 34,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-037-1",
+          "question": "확률 및 불규칙 변수 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.006061799999770301,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 37,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-037-2",
+          "question": "학수번호 704502 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.005776099999820872,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 37,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-040-1",
+          "question": "통신프로그래밍 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.006073499999729393,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 40,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-040-2",
+          "question": "학수번호 704836 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.0058260999999220076,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 40,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-043-1",
+          "question": "데이터 사이언스 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.005576699999892298,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 43,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-043-2",
+          "question": "학수번호 704816 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.006306600000243634,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 43,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-046-1",
+          "question": "법과생활(6영역) 첨단기술과경영 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.005529699999897275,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 46,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-046-2",
+          "question": "학수번호 004184 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.005660799999986921,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 46,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-049-1",
+          "question": "모바일 시스템 융합 및 실습 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.005768600000010338,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 49,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-049-2",
+          "question": "학수번호 704817 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.005842600000050879,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 49,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-052-1",
+          "question": "컴퓨터보안 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.0058224999997946725,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 52,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-052-2",
+          "question": "학수번호 704811 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.005722899999909714,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 52,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-055-1",
+          "question": "지능형무선통신네트워크 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.005822799999805284,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 55,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-055-2",
+          "question": "학수번호 704812 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.005704700000023877,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 55,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "negative-2",
+          "question": "대학 부설 반려용 사육장 신청",
+          "answerable": false,
+          "correct_rejection": false,
+          "hit": null,
+          "reciprocal_rank": null,
+          "seconds_without_embedding": 1.5824759000001904,
+          "returned": [
+            {
+              "document_id": "CURR-2026",
+              "page_number": 107,
+              "row_number": null,
+              "score": 0.8357569575309753
+            },
+            {
+              "document_id": "CURR-2026",
+              "page_number": 16,
+              "row_number": null,
+              "score": 0.834373950958252
+            },
+            {
+              "document_id": "CURR-2026",
+              "page_number": 163,
+              "row_number": null,
+              "score": 0.8336159586906433
+            },
+            {
+              "document_id": "CURR-2026",
+              "page_number": 34,
+              "row_number": null,
+              "score": 0.8335041403770447
+            },
+            {
+              "document_id": "CURR-2026",
+              "page_number": 143,
+              "row_number": null,
+              "score": 0.8333589434623718
+            }
+          ]
+        },
+        {
+          "id": "negative-4",
+          "question": "학생 개인 비밀번호를 알려줘",
+          "answerable": false,
+          "correct_rejection": true,
+          "hit": null,
+          "reciprocal_rank": null,
+          "seconds_without_embedding": 0.00208070000007865,
+          "returned": []
+        },
+        {
+          "id": "negative-6",
+          "question": "비공개 개인 은행 계좌 잔액을 알려줘",
+          "answerable": false,
+          "correct_rejection": true,
+          "hit": null,
+          "reciprocal_rank": null,
+          "seconds_without_embedding": 0.0016946999999163381,
+          "returned": []
+        }
+      ]
+    },
+    "hybrid": {
+      "metrics": {
+        "questions": 41,
+        "answerable": 38,
+        "unanswerable": 3,
+        "hit_at_k": 1.0,
+        "mrr": 1.0,
+        "correct_rejection_rate": 1.0
+      },
+      "details": [
+        {
+          "id": "course-001-1",
+          "question": "논리적사고와글쓰기(공학) / 공학글쓰기 (중 택1) 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.007052599999951781,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 1,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-001-2",
+          "question": "학수번호 001012 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.006794499999614345,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 1,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-004-1",
+          "question": "사회와 경제(2영역) 경제학입문 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.006014199999754055,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 4,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-004-2",
+          "question": "학수번호 002442 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.00619570000026215,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 4,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-007-1",
+          "question": "대학수학(1) 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.006011999999827822,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 7,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-007-2",
+          "question": "학수번호 012201 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.005576099999871076,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 7,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-010-1",
+          "question": "대학물리실험(1) 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.006538399999953981,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 10,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-010-2",
+          "question": "학수번호 012103 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.006018900000071881,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 10,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-013-1",
+          "question": "파이썬프로그래밍(입문) 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.005960700000287034,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 13,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-013-2",
+          "question": "학수번호 012316 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.005991199999698438,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 13,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-016-1",
+          "question": "회로이론 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.006200499999977183,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 16,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-016-2",
+          "question": "학수번호 704305 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.00645280000026105,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 16,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-019-1",
+          "question": "이산수학 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.006029299999681825,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 19,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-019-2",
+          "question": "학수번호 012206 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.00612490000003163,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 19,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-022-1",
+          "question": "자료구조 및 프로그래밍 실습 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.006096599999636965,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 22,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-022-2",
+          "question": "학수번호 704818 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.006293599999935395,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 22,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-025-1",
+          "question": "디지털공학 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.005937000000358239,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 25,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-025-2",
+          "question": "학수번호 704509 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.006109200000082637,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 25,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-028-1",
+          "question": "자바프로그래밍 및 실습 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.006086599999889586,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 28,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-028-2",
+          "question": "학수번호 704827 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.006018000000040047,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 28,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-031-1",
+          "question": "공학의이해(7영역) CTO특강 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.005980200000067271,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 31,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-031-2",
+          "question": "학수번호 008753 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.006245600000056584,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 31,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-034-1",
+          "question": "운영체제 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.0063734000000295055,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 34,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-034-2",
+          "question": "학수번호 704512 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.006405099999938102,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 34,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-037-1",
+          "question": "확률 및 불규칙 변수 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.006153099999664846,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 37,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-037-2",
+          "question": "학수번호 704502 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.006235399999695801,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 37,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-040-1",
+          "question": "통신프로그래밍 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.005815500000153406,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 40,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-040-2",
+          "question": "학수번호 704836 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.005860300000222196,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 40,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-043-1",
+          "question": "데이터 사이언스 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.006527300000016112,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 43,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-043-2",
+          "question": "학수번호 704816 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.005940499999724125,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 43,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-046-1",
+          "question": "법과생활(6영역) 첨단기술과경영 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.006880999999793858,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 46,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-046-2",
+          "question": "학수번호 004184 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.006240400000024238,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 46,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-049-1",
+          "question": "모바일 시스템 융합 및 실습 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.0064614999996592815,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 49,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-049-2",
+          "question": "학수번호 704817 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.005803500000183703,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 49,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-052-1",
+          "question": "컴퓨터보안 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.005646499999784282,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 52,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-052-2",
+          "question": "학수번호 704811 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.006285299999944982,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 52,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-055-1",
+          "question": "지능형무선통신네트워크 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.005742199999986042,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 55,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "course-055-2",
+          "question": "학수번호 704812 교과목 정보",
+          "answerable": true,
+          "correct_rejection": null,
+          "hit": true,
+          "reciprocal_rank": 1.0,
+          "seconds_without_embedding": 0.006178799999815965,
+          "returned": [
+            {
+              "document_id": "COURSE-TABLE-2026",
+              "page_number": null,
+              "row_number": 55,
+              "score": 1.0
+            }
+          ]
+        },
+        {
+          "id": "negative-2",
+          "question": "대학 부설 반려용 사육장 신청",
+          "answerable": false,
+          "correct_rejection": true,
+          "hit": null,
+          "reciprocal_rank": null,
+          "seconds_without_embedding": 1.764546800000062,
+          "returned": []
+        },
+        {
+          "id": "negative-4",
+          "question": "학생 개인 비밀번호를 알려줘",
+          "answerable": false,
+          "correct_rejection": true,
+          "hit": null,
+          "reciprocal_rank": null,
+          "seconds_without_embedding": 0.002384300000358053,
+          "returned": []
+        },
+        {
+          "id": "negative-6",
+          "question": "비공개 개인 은행 계좌 잔액을 알려줘",
+          "answerable": false,
+          "correct_rejection": true,
+          "hit": null,
+          "reciprocal_rank": null,
+          "seconds_without_embedding": 0.0018266999995830702,
+          "returned": []
+        }
+      ]
+    }
+  }
+}

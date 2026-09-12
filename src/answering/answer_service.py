@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from collections.abc import Sequence
 from typing import Protocol
+from src.answering.graduation import reviewed_graduation
 
 from src.answering.models import (
     AnswerFormat,
@@ -128,7 +129,7 @@ class AnswerService:
                 status=AnswerStatus.INSUFFICIENT_EVIDENCE,
                 answer_format=AnswerFormat.NONE,
                 text=(
-                    NO_ACADEMIC_RULE_MESSAGE
+                    response.clarification_message or NO_ACADEMIC_RULE_MESSAGE
                     if question_intent is QuestionIntent.ACADEMIC_RULE
                     else NO_EVIDENCE_MESSAGE
                 ),
@@ -136,6 +137,16 @@ class AnswerService:
             )
 
         if question_intent is QuestionIntent.ACADEMIC_RULE:
+            reviewed = reviewed_graduation(normalized_question, response.results)
+            if reviewed:
+                summary, result = reviewed
+                scoped_response = response.model_copy(update={"results": [result]})
+                return AnswerResponse(question=normalized_question, status=AnswerStatus.ANSWERED,
+                    answer_format=AnswerFormat.PDF, text=summary,
+                    sources=[cls._source(result, result.text)], search_response=scoped_response)
+            if any(result.file_type == "txt" and result.document_type == "공개공지"
+                   and (result.source_url or "").startswith("https://") for result in response.results):
+                return cls._official_web_rule_answer(normalized_question, response)
             return cls._academic_rule_answer(
                 normalized_question,
                 response,
@@ -351,6 +362,24 @@ class AnswerService:
             sources=[cls._source(result, excerpt)],
             search_response=response,
         )
+
+    @classmethod
+    def _official_web_rule_answer(cls, question, response):
+        results = [r for r in response.results if academic_rule_relevance(question, r.text) >= 0
+                   and (r.file_type == "pdf" or (r.document_type == "공개공지" and r.source_url))]
+        if not results:
+            return AnswerResponse(question=question, status=AnswerStatus.INSUFFICIENT_EVIDENCE,
+                answer_format=AnswerFormat.NONE, text=NO_ACADEMIC_RULE_MESSAGE,
+                search_response=response)
+        sources = deduplicate_answer_sources([cls._source(r, r.text) for r in results])
+        kinds = {s.file_type for s in sources}
+        text = "등록된 공식 자료에서 다음 내용을 확인했습니다. 적용 대상과 게시일을 함께 확인하세요.\n\n"
+        text += "\n\n".join(r.text for r in results)
+        if any(r.is_current is not True for r in results):
+            text += "\n\n" + OUTDATED_ANSWER_WARNING
+        return AnswerResponse(question=question, status=AnswerStatus.ANSWERED,
+            answer_format=AnswerFormat.MIXED if len(kinds) > 1 else AnswerFormat(next(iter(kinds))),
+            text=text, sources=sources, search_response=response)
 
     @classmethod
     def _academic_rule_answer(
@@ -866,6 +895,7 @@ class AnswerService:
             row_number=result.row_number,
             is_current=result.is_current,
             excerpt=excerpt,
+            source_url=result.source_url,
         )
 
     @staticmethod

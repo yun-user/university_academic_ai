@@ -8,6 +8,7 @@ import re
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Protocol
+from src.answering.graduation import reviewed_graduation
 
 from src.answering.answer_service import (
     NO_ACADEMIC_RULE_MESSAGE,
@@ -157,6 +158,8 @@ class LLMAnswerService:
             document_type=document_type,
         )
         response = deterministic.search_response
+        if reviewed_graduation(question, response.results):
+            return deterministic
         if (
             not self.available
             or deterministic.status is AnswerStatus.INSUFFICIENT_EVIDENCE
@@ -192,7 +195,7 @@ class LLMAnswerService:
                 user_prompt=build_user_prompt(question, evidence),
                 timeout_seconds=self._timeout_seconds,
             )
-            answer_text, cited_ids = _parse_completion(raw_completion)
+            answer_text, cited_ids = _parse_grounded_completion(raw_completion, evidence)
             if answer_text in {
                 NO_ACADEMIC_RULE_MESSAGE,
                 NO_EVIDENCE_MESSAGE,
@@ -310,6 +313,40 @@ def _parse_completion(raw_completion: str) -> tuple[str, list[str]]:
     return answer.strip(), list(dict.fromkeys(value.strip() for value in evidence_ids))
 
 
+def _parse_grounded_completion(raw, evidence):
+    """The LLM selects exact supporting sentences. Unverifiable paraphrases fall back.
+
+    This deliberately avoids claiming that mere citation IDs prove entailment.
+    """
+    fenced = _JSON_FENCE.fullmatch(raw.strip())
+    payload = json.loads(fenced.group("body") if fenced else raw)
+    if not isinstance(payload, dict):
+        raise ValueError("LLM output must be an object")
+    if payload.get("answer") in {NO_ACADEMIC_RULE_MESSAGE, NO_EVIDENCE_MESSAGE} and not payload.get("claims"):
+        return payload["answer"], []
+    claims = payload.get("claims")
+    if not isinstance(claims, list) or not 1 <= len(claims) <= 12:
+        raise ValueError("LLM output has no verifiable claims")
+    by_id = {result.chunk_id: result for result in evidence}
+    lines, ids = [], []
+    for claim in claims:
+        if not isinstance(claim, dict):
+            raise ValueError("Invalid claim")
+        key, quote = claim.get("evidence_id"), claim.get("quote")
+        if key not in by_id or not isinstance(quote, str) or len(quote.strip()) < 8:
+            raise ValueError("Missing evidence or quotation")
+        normalized = " ".join(quote.split())
+        if normalized not in " ".join(by_id[key].text.split()):
+            raise ValueError("Quote is not contained in cited evidence")
+        if claim.get("text", quote) != quote:
+            raise ValueError("Unverified paraphrases are not allowed")
+        source = by_id[key]
+        location = f"PDF {source.page_number}쪽" if source.page_number else "공식 웹 원문" if source.source_url else "TXT 원문"
+        lines.append(quote.strip() + f"\n({source.file_name} · {location})")
+        ids.append(key)
+    return "\n\n".join(lines), list(dict.fromkeys(ids))
+
+
 def _answer_source(result: DocumentSearchResult) -> AnswerSource:
     return AnswerSource(
         chunk_id=result.chunk_id,
@@ -320,6 +357,7 @@ def _answer_source(result: DocumentSearchResult) -> AnswerSource:
         row_number=result.row_number,
         is_current=result.is_current,
         excerpt=result.text,
+        source_url=result.source_url,
     )
 
 

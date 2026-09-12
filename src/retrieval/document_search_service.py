@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import json
+import hashlib
+import os
+import re
 import unicodedata
 from collections import Counter
 from difflib import SequenceMatcher
@@ -10,6 +13,8 @@ from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import ValidationError
+from src.operations import locked_service
+from src.retrieval.keyword_search import KeywordIndex, fuse
 
 from src.config import PROJECT_ROOT, Settings, get_settings
 from src.retrieval.document_chunker import chunk_corpus_record
@@ -40,6 +45,7 @@ from src.retrieval.query_intent import (
     academic_rule_relevance,
     academic_rule_signatures,
     classify_question_intent,
+    is_graduation_question,
 )
 
 
@@ -66,6 +72,12 @@ class DocumentSearchService:
         dedup_similarity_threshold: float,
         project_root: str | Path = PROJECT_ROOT,
         corpus_path: str | Path | None = None,
+        search_mode: str = "dense",
+        dense_top_k: int = 40,
+        keyword_top_k: int = 40,
+        rrf_k: int = 60,
+        dense_weight: float = .55,
+        keyword_weight: float = .45,
     ) -> None:
         if chunk_size <= 0 or not 0 <= chunk_overlap < chunk_size:
             raise ValueError("청크 크기와 겹침 설정이 올바르지 않습니다.")
@@ -86,6 +98,11 @@ class DocumentSearchService:
         self._project_root = Path(project_root).resolve()
         default_corpus = self._project_root / DEFAULT_CORPUS_RELATIVE_PATH
         self._corpus_path = Path(corpus_path or default_corpus).resolve()
+        if search_mode not in {"dense", "hybrid"}:
+            raise ValueError("SEARCH_MODE는 dense 또는 hybrid여야 합니다.")
+        self._search_mode = search_mode
+        self._dense_top_k, self._keyword_top_k = dense_top_k, keyword_top_k
+        self._rrf_k, self._dense_weight, self._keyword_weight = rrf_k, dense_weight, keyword_weight
 
     @classmethod
     def from_settings(
@@ -119,6 +136,12 @@ class DocumentSearchService:
             dedup_similarity_threshold=settings.retrieval_dedup_threshold,
             project_root=settings.project_root,
             corpus_path=settings.processed_data_dir / "documents.jsonl",
+            search_mode=os.getenv("SEARCH_MODE", "hybrid"),
+            dense_top_k=settings.dense_top_k,
+            keyword_top_k=settings.keyword_top_k,
+            rrf_k=settings.rrf_k,
+            dense_weight=settings.dense_weight,
+            keyword_weight=settings.keyword_weight,
         )
 
     @property
@@ -196,6 +219,7 @@ class DocumentSearchService:
         except ValueError:
             return path.as_posix()
 
+    @locked_service
     def index_corpus(
         self,
         corpus_path: str | Path | None = None,
@@ -370,23 +394,26 @@ class DocumentSearchService:
         question: str,
         explicit_department: str | None,
     ) -> str | None:
-        if explicit_department is not None:
-            return explicit_department
-        normalized_question = normalize_text(question)
+        normalized_question = re.sub(r"\s+", "", normalize_text(question))
         departments = sorted(
             self.available_departments(),
             key=lambda value: len(normalize_text(value)),
             reverse=True,
         )
         for department in departments:
-            normalized_department = normalize_text(department)
+            normalized_department = re.sub(r"\s+", "", normalize_text(department))
             if (
                 normalized_department
                 and normalized_department != normalize_text("전체")
                 and normalized_department in normalized_question
             ):
                 return department
-        return None
+        # An unindexed department must not silently widen the search to all
+        # departments. Keep its name as an exact filter, yielding no evidence.
+        unknown = re.search(r"([가-힣A-Za-z][가-힣A-Za-z0-9·]*(?:학과|학부))", question)
+        if unknown:
+            return unknown.group(1)
+        return explicit_department if explicit_department != "전체" else None
 
     @staticmethod
     def _course_candidates(
@@ -490,6 +517,26 @@ class DocumentSearchService:
             for item in candidates
         ]
 
+    def _hybrid_order(self, question, candidates, threshold):
+        dense = [c for c in candidates if c.score >= threshold]
+        if self._search_mode == "dense":
+            return dense
+        index = KeywordIndex(self._store.list_candidates(),
+                             self._project_root / "data/keyword_index/tokens.json")
+        by_id = {c.chunk_id: c for c in candidates}
+        lexical = index.search(question, set(by_id), self._keyword_top_k)
+        if not any(coverage >= .5 for _, _, coverage in lexical):
+            return []
+        # Exact identifier/term retrieval can recover low-cosine results; weak
+        # single-token matches in long questions cannot bypass the evidence gate.
+        lexical_ids = [key for key, score, coverage in lexical
+                       if coverage >= .5 or by_id[key].score >= threshold]
+        ranking = fuse([c.chunk_id for c in dense[:self._dense_top_k]], lexical_ids,
+                       k=self._rrf_k, dense_weight=self._dense_weight,
+                       keyword_weight=self._keyword_weight)
+        return [by_id[key] for key in ranking]
+
+    @locked_service
     def search_with_context(
         self,
         question: str,
@@ -509,14 +556,14 @@ class DocumentSearchService:
 
         question_intent = classify_question_intent(question)
         course_intent = parse_course_query(question)
-        effective_department = (
-            self._question_department(question, department)
-            if question_intent in {
-                QuestionIntent.COURSE_LIST,
-                QuestionIntent.ACADEMIC_RULE,
-            }
-            else department
-        )
+        effective_department = self._question_department(question, department)
+        if is_graduation_question(question) and effective_department is None:
+            scoped_departments = [d for d in self.available_departments() if d != "전체"]
+            if len(scoped_departments) == 1:
+                effective_department = scoped_departments[0]
+            else:
+                return DocumentSearchResponse(question_intent=question_intent,
+                    clarification_message="졸업요건은 학과마다 다릅니다. 학과를 선택하거나 질문에 학과명을 적어 주세요.")
         structured_query = (
             question_intent is QuestionIntent.COURSE_LIST
             and course_intent.has_structured_conditions
@@ -529,16 +576,74 @@ class DocumentSearchService:
                 structured_query=structured_query,
             )
 
+        # Private records are not part of the public academic corpus.
+        if re.search(r"(개인|다른\s*학생).*(비밀번호|성적표|계좌|잔액)", question):
+            return DocumentSearchResponse(question_intent=question_intent)
+
+        # Course identifiers and complete course names are exact lookups, never
+        # truncated dense results. Keep metadata filters before this lookup.
+        if question_intent is not QuestionIntent.ACADEMIC_RULE and document_type in {None, COURSE_DOCUMENT_TYPE}:
+            code_match = re.search(r"학수번호\s*[:#]?\s*([A-Za-z0-9-]{4,})", question)
+            normalized_question = normalize_text(question)
+            exact_named = []
+            for candidate in self._store.list_candidates(where=self._build_search_filter(
+                    department=effective_department, document_type=COURSE_DOCUMENT_TYPE, file_type="csv")):
+                course = parse_course_info(candidate.content)
+                if course is None:
+                    continue
+                if code_match:
+                    from src.retrieval.course_search import format_course_codes
+                    codes = re.findall(r"[A-Za-z0-9-]+", format_course_codes(course))
+                    matches = code_match.group(1) in codes
+                else:
+                    name = normalize_text(course.course_name)
+                    matches = bool(name and name in normalized_question and (
+                        normalized_question == name or re.search("교과목|과목|학점|학기", question)))
+                if matches:
+                    exact_named.append(candidate)
+            if exact_named:
+                exact_named = self._deduplicate(exact_named)
+                return DocumentSearchResponse(results=self._to_results(exact_named, score_kind="structured_exact"),
+                    question_intent=QuestionIntent.COURSE_LIST, structured_query=True,
+                    exact_match_count=len(exact_named))
+            if code_match:
+                return DocumentSearchResponse(question_intent=QuestionIntent.COURSE_LIST,
+                                              structured_query=True)
+
         if question_intent is QuestionIntent.ACADEMIC_RULE:
             rule_filter = self._build_search_filter(
                 department=effective_department,
                 document_type=document_type,
-                file_type="pdf",
-                include_global_department=True,
+                # '전체' can contain rules for another department, rather than
+                # universally applicable rules. Never widen a scoped query.
+                include_global_department=False,
             )
             page_context_candidates = self._store.list_candidates(
                 where=rule_filter,
             )
+            # Graduation tables are page-level evidence. Keep the table body
+            # with its heading instead of ranking isolated heading chunks.
+            if is_graduation_question(question):
+                try:
+                    records = self._load_records(self._corpus_path)
+                except CorpusLoadError:
+                    records = []
+                tables = {(r.document_id, r.page_number): r for r in records
+                    if r.searchable and r.file_type == "pdf"
+                    and re.search(r"<표\s*\d+>[^\n]*졸업\s*요건", r.text)
+                    and re.search(r"총\s*\d+\s*학점", r.text)}
+                expanded, seen_pages = [], set()
+                for candidate in page_context_candidates:
+                    key = (candidate.document_id, candidate.page_number)
+                    if key in tables:
+                        if key in seen_pages:
+                            continue
+                        seen_pages.add(key)
+                        full_text = tables[key].text
+                        candidate = candidate.model_copy(update={"content": full_text,
+                            "content_hash": hashlib.sha256(full_text.encode()).hexdigest()})
+                    expanded.append(candidate)
+                page_context_candidates = expanded
             semantic_candidates = self._store.query(
                 self._embeddings.embed_query(question),
                 fetch_k=record_count,
@@ -571,7 +676,9 @@ class DocumentSearchService:
             directly_relevant = [
                 (candidate, academic_rule_relevance(question, candidate.content))
                 for candidate in rule_candidates
-                if candidate.file_type == "pdf"
+                if candidate.file_type == "pdf" or (
+                    candidate.file_type == "txt" and candidate.document_type == "공개공지"
+                    and (candidate.source_url or "").startswith("https://"))
             ]
             directly_relevant = [
                 (candidate, relevance)
@@ -580,6 +687,9 @@ class DocumentSearchService:
             ]
             directly_relevant.sort(
                 key=lambda item: (
+                    bool(is_graduation_question(question)
+                         and re.search(r"<표\s*\d+>[^\n]*졸업\s*요건", item[0].content)
+                         and re.search(r"총\s*\d+\s*학점", item[0].content)),
                     item[1],
                     item[0].is_current is True,
                     item[0].source_year or "",
@@ -707,9 +817,7 @@ class DocumentSearchService:
                 document_type=document_type,
             ),
         )
-        eligible = [
-            candidate for candidate in candidates if candidate.score >= threshold
-        ]
+        eligible = self._hybrid_order(question, candidates, threshold)
 
         if structured_query:
             selected = self._deduplicate(eligible)[:limit]
