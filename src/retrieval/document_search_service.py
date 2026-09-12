@@ -53,6 +53,16 @@ DEFAULT_DOCUMENT_COLLECTION_NAME = "academic_corpus_chunks_v1"
 DEFAULT_CORPUS_RELATIVE_PATH = Path("data/processed/documents.jsonl")
 
 
+def _one_character_typo(left: str, right: str) -> bool:
+    """Accept one insertion, deletion, or substitution, not broad similarity."""
+    if min(len(left), len(right)) < 6 or abs(len(left) - len(right)) > 1:
+        return False
+    if len(left) == len(right):
+        return sum(a != b for a, b in zip(left, right)) == 1
+    short, long = sorted((left, right), key=len)
+    return any(long[:i] + long[i + 1:] == short for i in range(len(long)))
+
+
 class CorpusLoadError(RuntimeError):
     """통합 corpus 파일을 안전하게 읽거나 검증할 수 없을 때 발생한다."""
 
@@ -412,7 +422,13 @@ class DocumentSearchService:
         # departments. Keep its name as an exact filter, yielding no evidence.
         unknown = re.search(r"([가-힣A-Za-z][가-힣A-Za-z0-9·]*(?:학과|학부))", question)
         if unknown:
-            return unknown.group(1)
+            name = unknown.group(1)
+            normalized_name = normalize_text(name)
+            matches = [d for d in departments if d.endswith(name[-2:])
+                       and _one_character_typo(normalized_name,
+                           re.sub(r"\s+", "", normalize_text(d)))]
+            # Never pick arbitrarily between similarly named departments.
+            return matches[0] if len(matches) == 1 else name
         return explicit_department if explicit_department != "전체" else None
 
     @staticmethod
