@@ -491,7 +491,7 @@ def test_no_related_document_shows_standard_message() -> None:
         "현재 등록된 자료에서는 질문에 대한 정확한 근거를 찾지 못했습니다."
         in _visible_text(app)
     )
-    assert app.expander == []
+    assert [item.label for item in app.expander] == ["LLM 사용 안내"]
 
 
 def test_empty_index_does_not_call_search_service() -> None:
@@ -506,4 +506,4 @@ def test_empty_index_does_not_call_search_service() -> None:
         "현재 등록된 자료에서 정확한 규정을 찾지 못했습니다."
         in _visible_text(app)
     )
-    assert app.expander == []
+    assert [item.label for item in app.expander] == ["LLM 사용 안내"]
