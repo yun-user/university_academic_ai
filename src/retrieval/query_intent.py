@@ -64,6 +64,12 @@ def graduation_topic(question: str) -> str | None:
         return None
     if re.search(r"졸업(논문|프로젝트|작품)", compact):
         return None
+    if ("설계학점" in compact or "설계인정학점" in compact or "설계교과목" in compact) and re.search(r"얼마|몇|필요|최소|이수|과목|포함|어떤|뭐|알려|채우|채워|인정", compact):
+        return "design"
+    if re.search(r"영어|어학|토익|toeic|opic|토플|teps|텝스|교양중국어|교양일본어", compact) and re.search(r"대체|인정|졸업|최저|기준|몇점", compact):
+        return "english"
+    if re.search(r"msc", compact) and re.search(r"학점|졸업|필요|얼마|몇", compact) and not re.search(r"과목.*(목록|보여|알려)|개설", compact):
+        return "msc"
     quantity = bool(re.search(r"몇|얼마|최소|필요|채워|채우|이수|들어|들으", compact))
     mentions_graduation = "졸업" in compact
     asks_requirements = bool(re.search(
@@ -75,6 +81,8 @@ def graduation_topic(question: str) -> str | None:
         return "english"
     if "설계" in compact:
         return "design"
+    if "msc" in compact:
+        return "msc"
     if "전공" in compact and (quantity or "학점" in compact) and "전공필수" not in compact:
         return "major_credits"
     if quantity and re.search(r"총학점|전체학점|총몇|모두몇|학점.*(몇|얼마)|몇학점", compact):

@@ -215,14 +215,17 @@ class ChromaDocumentVectorStore:
         vectors = self._validate_vectors(chunks, embeddings)
         previous_ids = self._all_ids()
         current_ids = {chunk.chunk_id for chunk in chunks}
+        batch_size = self._client.get_max_batch_size()
         if chunks:
             try:
-                self._collection.upsert(
-                    ids=[chunk.chunk_id for chunk in chunks],
-                    embeddings=vectors,
-                    documents=[chunk.content for chunk in chunks],
-                    metadatas=[self._metadata(chunk) for chunk in chunks],
-                )
+                for start in range(0, len(chunks), batch_size):
+                    batch = chunks[start:start + batch_size]
+                    self._collection.upsert(
+                        ids=[chunk.chunk_id for chunk in batch],
+                        embeddings=vectors[start:start + batch_size],
+                        documents=[chunk.content for chunk in batch],
+                        metadatas=[self._metadata(chunk) for chunk in batch],
+                    )
             except Exception as error:
                 raise DocumentVectorStoreError(
                     "통합 문서 청크 저장에 실패했습니다."
@@ -231,7 +234,8 @@ class ChromaDocumentVectorStore:
         stale_ids = sorted(previous_ids - current_ids)
         if stale_ids:
             try:
-                self._collection.delete(ids=stale_ids)
+                for start in range(0, len(stale_ids), batch_size):
+                    self._collection.delete(ids=stale_ids[start:start + batch_size])
             except Exception as error:
                 raise DocumentVectorStoreError(
                     "통합 색인의 stale 청크 삭제에 실패했습니다."

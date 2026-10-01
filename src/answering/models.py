@@ -42,6 +42,7 @@ class AnswerSource(StrictModel):
     """답변 본문에 실제로 사용된 검색 결과의 출처."""
 
     chunk_id: NonEmptyText
+    document_id: str | None = None
     file_name: NonEmptyText
     file_type: DocumentFileType
     source_year: str | None = None
@@ -67,11 +68,12 @@ class AnswerSource(StrictModel):
 def answer_source_key(source: AnswerSource) -> tuple[str, ...]:
     """사용자에게 표시할 물리 출처 위치를 안정적인 키로 만든다."""
 
+    identity = (source.document_id or "", source.file_name, source.source_year or "", source.source_url or "")
     if source.file_type == "pdf":
-        return ("pdf", source.file_name, str(source.page_number))
+        return ("pdf", *identity, str(source.page_number))
     if source.file_type == "csv":
-        return ("csv", source.file_name, str(source.row_number))
-    return ("txt", source.file_name)
+        return ("csv", *identity, str(source.row_number))
+    return ("txt", *identity)
 
 
 def deduplicate_answer_sources(
@@ -123,6 +125,8 @@ class AnswerResponse(StrictModel):
                 result = results_by_chunk.get(source.chunk_id)
                 if result is None:
                     raise ValueError("답변 출처는 검색 결과에 포함되어야 합니다.")
+                if source.document_id is not None and source.document_id != result.document_id:
+                    raise ValueError("답변 출처의 문서 ID가 검색 결과와 다릅니다.")
                 source_locator = (
                     source.file_name,
                     source.file_type,

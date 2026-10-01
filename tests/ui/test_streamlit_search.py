@@ -373,6 +373,8 @@ def test_search_screen_contains_requested_controls_and_disclaimer() -> None:
     assert [selectbox.label for selectbox in app.selectbox] == [
         "학과 선택",
         "문서 유형 선택",
+        "입학연도 (선택)",
+        "졸업 과정 (선택)",
     ]
     assert app.button[0].label == "검색"
     assert any(

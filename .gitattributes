@@ -1,0 +1,3 @@
+# Reviewed snapshots are verified byte-for-byte; Windows checkout must not
+# convert their line endings. Preserve upstream whitespace in these originals.
+config/reviewed_rules/sources/* -text -whitespace

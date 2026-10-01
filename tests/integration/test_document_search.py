@@ -181,6 +181,76 @@ def test_release_exact_identifier_ignores_dense_rank_and_respects_department(tmp
     assert not service.search("학수번호 009999 교과목 정보")
 
 
+def test_structured_course_query_respects_document_type(tmp_path):
+    service = _service(tmp_path)
+    _write_corpus(service.corpus_path, [_record(document_id="course", file_name="courses.csv",
+        file_type="csv", document_type="학년별교과과정", row_number=1,
+        text=_course_text("자료구조", grade=2, completion_type="전공필수", first_code="001234"))])
+    service.index_corpus()
+    response = service.search_with_context("소프트웨어융합학과 2학년 1학기 전공필수 과목",
+                                           document_type="장학안내")
+    assert response.results == []
+
+
+@pytest.mark.parametrize("same_filename", [False, True])
+def test_conflicting_course_versions_are_not_silently_deduplicated(tmp_path, same_filename):
+    from src.answering.answer_service import AnswerService
+    service = _service(tmp_path)
+    _write_corpus(service.corpus_path, [_record(document_id=f"course-{i}", file_name="courses.csv" if same_filename else f"courses-{i}.csv",
+        file_type="csv", document_type="학년별교과과정", row_number=1, source_year=str(2025 + i),
+        text=_course_text("자료구조", grade=2, completion_type="전공필수", first_code="001234", credits=str(3+i)))
+        for i in range(2)])
+    service.index_corpus()
+    answer = AnswerService(service).answer_question("자료구조 과목 학점")
+    assert len(answer.sources) == 2
+    assert "자료별 교과목 정보가 다릅니다" in answer.text
+    assert "2025" in answer.text and "2026" in answer.text
+
+
+def test_vector_sync_batches_upsert_and_stale_delete(tmp_path, monkeypatch):
+    service = _service(tmp_path)
+    client, collection = service._store._client, service._store._collection
+    monkeypatch.setattr(type(client), "get_max_batch_size", lambda self: 2)
+    original_upsert, original_delete = type(collection).upsert, type(collection).delete
+    def bounded_upsert(self, **kwargs):
+        assert len(kwargs["ids"]) <= 2, "backend batch limit exceeded"
+        return original_upsert(self, **kwargs)
+    def bounded_delete(self, **kwargs):
+        assert len(kwargs["ids"]) <= 2, "backend batch limit exceeded"
+        return original_delete(self, **kwargs)
+    monkeypatch.setattr(type(collection), "upsert", bounded_upsert)
+    monkeypatch.setattr(type(collection), "delete", bounded_delete)
+    records = [_record(document_id=f"d{i}", file_name=f"{i}.txt", file_type="txt",
+                       document_type="안내", text=f"등록 안내 자료 {i}") for i in range(5)]
+    _write_corpus(service.corpus_path, records)
+    assert service.index_corpus().indexed_chunk_count == 5
+    _write_corpus(service.corpus_path, records[:1])
+    assert service.index_corpus().removed_stale_count == 4
+    assert service.indexed_chunk_count == 1
+
+
+def test_short_course_name_requires_unique_registered_prefix(tmp_path):
+    from src.answering.answer_service import AnswerService
+    service = _service(tmp_path)
+    def course(i, name):
+        return _record(document_id=f"course-{i}", file_name=f"{i}.csv", file_type="csv",
+            document_type="학년별교과과정", row_number=1,
+            text=_course_text(name, grade=2, completion_type="전공필수", first_code=str(704818 + i)))
+    records = [course(0, "자료구조 및 프로그래밍 실습")]
+    _write_corpus(service.corpus_path, records)
+    service.index_corpus()
+    response = service.search_with_context("자료구조 과목은 몇 학점이야?")
+    assert response.exact_match_count == 1
+    assert response.results[0].file_type == "csv"
+    assert "자료구조 및 프로그래밍 실습" in AnswerService.compose_answer("자료구조 과목은 몇 학점이야?", response).text
+    records.append(course(1, "자료구조 심화 실습"))
+    _write_corpus(service.corpus_path, records)
+    service.index_corpus()
+    response = service.search_with_context("자료구조 과목은 몇 학점이야?")
+    assert not response.results
+    assert "여러 개" in AnswerService.compose_answer("자료구조 과목은 몇 학점이야?", response).text
+
+
 def test_release_hybrid_retrieves_keyword_then_removes_disabled_chunk(tmp_path):
     service = _service(tmp_path)
     service._search_mode = "hybrid"
@@ -675,7 +745,7 @@ def test_major_course_question_keeps_required_and_elective_rows_first(
     }
 
 
-def test_structured_course_search_returns_only_one_exact_csv_match(
+def test_structured_course_search_honors_selected_pdf_type(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
@@ -734,29 +804,19 @@ def test_structured_course_search_returns_only_one_exact_csv_match(
     )
     service = _service(tmp_path)
     service.index_corpus()
-    monkeypatch.setattr(
-        service._embeddings,
-        "embed_query",
-        lambda _question: pytest.fail(
-            "정확한 CSV 결과가 있으면 일반 의미 검색을 실행하면 안 됩니다."
-        ),
-    )
-
     response = service.search_with_context(
         "소프트웨어융합학과 2학년 1학기 전공필수 과목을 알려줘",
         top_k=5,
         document_type="프로그램내규",
     )
 
-    assert response.structured_query is True
-    assert response.exact_match_count == 1
+    assert response.structured_query is False
+    assert response.exact_match_count == 0
     assert response.semantic_fallback_used is False
     assert len(response.results) == 1
-    assert response.results[0].file_type == "csv"
-    assert response.results[0].score_kind == "structured_exact"
-    assert response.results[0].row_number == 21
-    assert "교과목명: 자료구조및프로그래밍" in response.results[0].text
-    assert all(result.file_type not in {"pdf", "txt"} for result in response.results)
+    assert response.results[0].file_type == "pdf"
+    assert response.results[0].document_type == "프로그램내규"
+    assert response.results[0].page_number == 4
 
 
 def test_structured_course_search_returns_all_exact_csv_matches_ignoring_top_k(
@@ -951,7 +1011,8 @@ def test_structured_course_search_supports_general_elective_completion_type(
     assert "교과목명: 졸업논문" in response.results[0].text
 
 
-def test_duplicate_course_names_are_removed(tmp_path: Path) -> None:
+@pytest.mark.parametrize("second_code,expected_count", [("704818", 1), ("704819", 2)])
+def test_only_identical_course_values_are_removed(tmp_path: Path, second_code, expected_count) -> None:
     corpus_path = tmp_path / "data/processed/documents.jsonl"
     duplicate = _course_text(
         "자료구조및프로그래밍",
@@ -981,7 +1042,7 @@ def test_duplicate_course_names_are_removed(tmp_path: Path) -> None:
                         "자료구조및프로그래밍",
                         "자료구조 및 프로그래밍",
                     )
-                    .replace("704818", "704819")
+                    .replace("704818", second_code)
                 ),
                 row_number=2,
             ),
@@ -992,7 +1053,7 @@ def test_duplicate_course_names_are_removed(tmp_path: Path) -> None:
 
     results = service.search("2학년 전공필수 과목", top_k=3)
 
-    assert len(results) == 1
+    assert len(results) == expected_count
     assert "교과목명: 자료구조및프로그래밍" in results[0].text
 
 

@@ -15,6 +15,7 @@ from typing import Any, Literal
 from pydantic import ValidationError
 from src.operations import locked_service
 from src.retrieval.keyword_search import KeywordIndex, fuse
+from src.retrieval.reviewed_rules import reviewed_rule_search
 
 from src.config import PROJECT_ROOT, Settings, get_settings
 from src.retrieval.document_chunker import chunk_corpus_record
@@ -166,7 +167,10 @@ class DocumentSearchService:
         return self._store.list_metadata_values("department")
 
     def available_document_types(self) -> list[str]:
-        return self._store.list_metadata_values("document_type")
+        types = self._store.list_metadata_values("document_type")
+        if (self._project_root / "config/reviewed_rules/hongik.json").is_file():
+            return sorted(set(types) | {"검토된 학사규정"})
+        return types
 
     def available_file_types(self) -> list[str]:
         return self._store.list_metadata_values("file_type")
@@ -348,8 +352,8 @@ class DocumentSearchService:
             tuple[str, str, int | None, int | None, str]
         ] = []
         seen_ids: set[str] = set()
-        seen_contents: set[str] = set()
-        seen_courses: set[tuple[str, str]] = set()
+        seen_contents: set[tuple] = set()
+        seen_courses: set[tuple] = set()
         for candidate in candidates:
             normalized = self._normalized(candidate.content)
             course = (
@@ -357,10 +361,13 @@ class DocumentSearchService:
                 if candidate.file_type == "csv"
                 else None
             )
-            course_key = (
-                normalize_text(candidate.department),
-                normalize_text(course.course_name).replace(" ", ""),
-            ) if course is not None else None
+            scope = (candidate.department, candidate.document_type, candidate.source_year,
+                     candidate.track, candidate.admission_year_from, candidate.admission_year_to)
+            content_key = (*scope, normalized)
+            # A shared name is not a duplicate: credits/codes can differ by
+            # curriculum version. Preserve each distinct value and scope.
+            course_key = (*scope, normalize_text(course.course_name).replace(" ", ""),
+                          course.grade, course.completion_type, course.semesters) if course is not None else None
             same_locator_similar = any(
                 candidate.document_id == document_id
                 and candidate.file_name == file_name
@@ -378,14 +385,14 @@ class DocumentSearchService:
             )
             if (
                 candidate.chunk_id in seen_ids
-                or normalized in seen_contents
+                or content_key in seen_contents
                 or (course_key is not None and course_key in seen_courses)
-                or same_locator_similar
+                or (course is None and same_locator_similar)
             ):
                 continue
             kept.append(candidate)
             seen_ids.add(candidate.chunk_id)
-            seen_contents.add(normalized)
+            seen_contents.add(content_key)
             if course_key is not None:
                 seen_courses.add(course_key)
             source_texts.append(
@@ -580,10 +587,14 @@ class DocumentSearchService:
             else:
                 return DocumentSearchResponse(question_intent=question_intent,
                     clarification_message="졸업요건은 학과마다 다릅니다. 학과를 선택하거나 질문에 학과명을 적어 주세요.")
+        reviewed = reviewed_rule_search(question, effective_department, self._project_root, document_type)
+        if reviewed is not None:
+            return reviewed
         structured_query = (
             question_intent is QuestionIntent.COURSE_LIST
             and course_intent.has_structured_conditions
             and effective_department is not None
+            and document_type in {None, COURSE_DOCUMENT_TYPE}
         )
         record_count = self.indexed_chunk_count
         if record_count == 0:
@@ -602,11 +613,18 @@ class DocumentSearchService:
             code_match = re.search(r"학수번호\s*[:#]?\s*([A-Za-z0-9-]{4,})", question)
             normalized_question = normalize_text(question)
             exact_named = []
+            short_named = []
+            short_match = re.search(r"([가-힣A-Za-z0-9·]{3,})\s*(?:교과목|과목)(?:은|는|이|가)?\s*(?:몇|학점)", question)
             for candidate in self._store.list_candidates(where=self._build_search_filter(
                     department=effective_department, document_type=COURSE_DOCUMENT_TYPE, file_type="csv")):
                 course = parse_course_info(candidate.content)
                 if course is None:
                     continue
+                if short_match and not code_match:
+                    short_name = normalize_text(short_match.group(1))
+                    full_name = normalize_text(course.course_name)
+                    if full_name.startswith(short_name + " "):
+                        short_named.append(candidate)
                 if code_match:
                     from src.retrieval.course_search import format_course_codes
                     codes = re.findall(r"[A-Za-z0-9-]+", format_course_codes(course))
@@ -617,6 +635,13 @@ class DocumentSearchService:
                         normalized_question == name or re.search("교과목|과목|학점|학기", question)))
                 if matches:
                     exact_named.append(candidate)
+            if not exact_named and short_named:
+                names = {normalize_text(parse_course_info(c.content).course_name) for c in short_named}
+                if len(names) == 1:
+                    exact_named = short_named
+                else:
+                    return DocumentSearchResponse(question_intent=QuestionIntent.COURSE_LIST,
+                        clarification_message="해당 이름으로 시작하는 과목이 여러 개입니다. 정식 과목명이나 학수번호를 알려 주세요.")
             if exact_named:
                 exact_named = self._deduplicate(exact_named)
                 return DocumentSearchResponse(results=self._to_results(exact_named, score_kind="structured_exact"),

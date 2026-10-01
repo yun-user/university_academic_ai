@@ -11,6 +11,8 @@ st.title("문서 관리")
 st.caption("자료의 출처와 적용 대상을 등록하고 검색에 반영합니다.")
 require_admin()
 root = get_settings().project_root
+if (root / "config/reviewed_rules/hongik.json").exists():
+    st.info("졸업·어학·설계의 ‘검토된 학사규정’ 답변은 별도 검토본을 사용합니다. 새 자료 등록만으로 이 요약이 바뀌지는 않습니다. 규정이 개정되면 원문 대조 후 검토본도 갱신해야 합니다.")
 documents = list_documents(root)
 labels = {d["id"]: f'{d["name"]} · {d["id"][:16]}' for d in documents}
 

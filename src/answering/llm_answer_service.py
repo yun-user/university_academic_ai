@@ -158,7 +158,7 @@ class LLMAnswerService:
             document_type=document_type,
         )
         response = deterministic.search_response
-        if reviewed_graduation(question, response.results):
+        if response.reviewed_answer or reviewed_graduation(question, response.results):
             return deterministic
         if (
             not self.available
@@ -350,6 +350,7 @@ def _parse_grounded_completion(raw, evidence):
 def _answer_source(result: DocumentSearchResult) -> AnswerSource:
     return AnswerSource(
         chunk_id=result.chunk_id,
+        document_id=result.document_id,
         file_name=result.file_name,
         file_type=result.file_type,
         source_year=result.source_year,
@@ -516,9 +517,10 @@ def _append_trusted_sources(
     results: Sequence[DocumentSearchResult],
 ) -> str:
     unique_results: list[DocumentSearchResult] = []
-    seen_locations: set[tuple[str, str, int | None]] = set()
+    seen_locations: set[tuple] = set()
     for result in results:
         locator = (
+            result.document_id,
             result.file_type,
             result.file_name,
             result.page_number if result.file_type == "pdf" else result.row_number,
