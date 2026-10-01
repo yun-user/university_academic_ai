@@ -11,13 +11,19 @@ st.caption("원본 페이지와 인식한 텍스트를 대조합니다. 승인�
 require_admin()
 settings = get_settings()
 root = settings.project_root
-pdfs = [d for d in list_documents(root) if d["path"].endswith(".pdf")]
+pdfs = [d for d in list_documents(root) if d["path"].lower().endswith(".pdf") and d["active"]]
 if not pdfs:
     st.info("PDF를 먼저 등록하세요.")
     st.stop()
 document = st.selectbox("PDF 선택", pdfs, format_func=lambda d: d["name"] + " · " + d["id"][:16])
-with pymupdf.open(safe_path(root, document["path"])) as pdf:
-    page_count = len(pdf)
+try:
+    with pymupdf.open(safe_path(root, document["path"])) as pdf:
+        if pdf.needs_pass or not len(pdf):
+            raise ValueError("PDF를 읽을 수 없습니다.")
+        page_count = len(pdf)
+except (OSError, RuntimeError, ValueError):
+    st.error("원본 PDF가 없거나 손상·암호화되어 열 수 없습니다. 문서 관리에서 파일을 다시 등록하거나 비활성화하세요.")
+    st.stop()
 page_number = st.number_input("PDF 실제 페이지 번호", min_value=1, max_value=page_count, value=1)
 if st.button("이 페이지 OCR 실행", type="primary"):
     try:
@@ -29,7 +35,11 @@ if st.button("이 페이지 OCR 실행", type="primary"):
         st.error(str(exc) if isinstance(exc, ValueError) else "OCR 실행에 실패했습니다. 언어 데이터와 PDF 상태를 확인하세요.")
 left, right = st.columns(2)
 with left:
-    st.image(page_preview(root, document, page_number), caption=f"원본 PDF {page_number}쪽")
+    try:
+        st.image(page_preview(root, document, page_number), caption=f"원본 PDF {page_number}쪽")
+    except (OSError, RuntimeError, ValueError):
+        st.error("원본 페이지를 표시하지 못했습니다. PDF 상태를 확인한 뒤 다시 시도하세요.")
+        st.stop()
 with right:
     with database(root) as con:
         row = con.execute("SELECT * FROM ocr WHERE id=? AND page=?", (document["id"], page_number)).fetchone()

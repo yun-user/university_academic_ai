@@ -416,16 +416,17 @@ def _match_manifest(
 def _add_unmatched_manifest_warnings(
     catalog: _ManifestCatalog,
     report: dict[str, Any],
+    states: dict[str, int],
 ) -> None:
     for index, entry in enumerate(catalog.entries):
         file_name = entry.get("file_name", "")
-        if not file_name or index in catalog.matched_indices:
+        if not file_name or index in catalog.matched_indices or not states.get(entry.get("document_id"), 1):
             continue
         _add_issue(
             report,
-            "warnings",
+            "errors",
             code="MANIFEST_FILE_NOT_FOUND",
-            message="manifest에 등록되어 있지만 실제 입력 파일을 찾지 못했습니다.",
+            message="활성 자료의 원본 파일이 없습니다. 파일을 복원하거나 문서 관리에서 비활성화하세요.",
             file_name=file_name,
         )
 
@@ -844,7 +845,10 @@ def _write_outputs(
     processed_directory: Path,
 ) -> tuple[Path, Path]:
     processed_directory.mkdir(parents=True, exist_ok=True)
-    documents_path = processed_directory / DOCUMENTS_FILE_NAME
+    # Failed extraction is diagnostic output, never the active search corpus.
+    documents_path = processed_directory / (
+        "documents.failed.jsonl" if report["errors"] else DOCUMENTS_FILE_NAME
+    )
     report_path = processed_directory / REPORT_FILE_NAME
     documents_temp_path = processed_directory / f".{DOCUMENTS_FILE_NAME}.tmp"
     report_temp_path = processed_directory / f".{REPORT_FILE_NAME}.tmp"
@@ -899,8 +903,22 @@ def _build_corpus(
     report["total_files"] = len(pdf_files) + len(csv_files) + len(txt_files)
 
     documents: list[dict[str, Any]] = []
+    from src.ingestion.registry import database
+    with database(root) as con:
+        states = dict(con.execute("SELECT id,active FROM states"))
+
+    def inactive(path, manifest):
+        document_id = _nullable_manifest_value(manifest, "document_id") or _fallback_document_id(
+            _relative_source_path(path, root))
+        if not states.get(document_id, 1):
+            report["skipped_inactive_files"] = report.get("skipped_inactive_files", 0) + 1
+            return True
+        return False
+
     for path in pdf_files:
         manifest = _match_manifest(path, "pdf", catalog, report)
+        if inactive(path, manifest):
+            continue
         documents.extend(
             _process_pdf(
                 path,
@@ -912,6 +930,8 @@ def _build_corpus(
 
     for path in csv_files:
         manifest = _match_manifest(path, "csv", catalog, report)
+        if inactive(path, manifest):
+            continue
         documents.extend(
             _process_csv(
                 path,
@@ -923,6 +943,8 @@ def _build_corpus(
 
     for path in txt_files:
         manifest = _match_manifest(path, "txt", catalog, report)
+        if inactive(path, manifest):
+            continue
         documents.extend(
             _process_txt(
                 path,
@@ -932,7 +954,7 @@ def _build_corpus(
             )
         )
 
-    _add_unmatched_manifest_warnings(catalog, report)
+    _add_unmatched_manifest_warnings(catalog, report, states)
     from src.ingestion.registry import augment_corpus
     documents = augment_corpus(root, documents, report)
     report["document_records"] = len(documents)

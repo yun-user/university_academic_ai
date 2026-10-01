@@ -18,6 +18,54 @@ from src.retrieval.document_vector_store import ChromaDocumentVectorStore
 _OPEN_SERVICES: list[DocumentSearchService] = []
 
 
+@pytest.mark.parametrize("phase", ["upsert", "delete"])
+@pytest.mark.parametrize("initial", [True, False])
+@pytest.mark.parametrize("rebuild", [True, False])
+def test_failed_batch_restores_corpus_and_vector_snapshot(tmp_path, monkeypatch, phase, initial, rebuild):
+    from src.operations import preserve_corpus_on_failure
+    from src.retrieval.document_vector_store import DocumentVectorStoreError
+    service = _service(tmp_path)
+    collection = service._store._collection
+    def rows(prefix):
+        return [_record(document_id=f"{prefix}-{i}", file_name=f"{prefix}-{i}.txt",
+                        file_type="txt", document_type="학사안내", text=f"{prefix} 장학금 안내 {i}")
+                for i in range(5)]
+    if initial:
+        _write_corpus(service.corpus_path, rows("old"))
+        service.index_corpus()
+    old_corpus = service.corpus_path.read_bytes() if initial else None
+    before = collection.get(include=["embeddings", "metadatas", "documents"])
+    monkeypatch.setattr(type(service._store._client), "get_max_batch_size", lambda self: 2)
+    original = getattr(type(collection), phase)
+    calls = 0
+    def fail_second(self, **kwargs):
+        nonlocal calls
+        calls += 1
+        result = original(self, **kwargs)
+        if calls == 2:
+            raise RuntimeError("injected after committed batch")
+        return result
+    monkeypatch.setattr(type(collection), phase, fail_second)
+    # Empty original index has no delete phase; cover an upsert failure instead.
+    if phase == "delete" and not initial:
+        monkeypatch.setattr(type(collection), "upsert", lambda self, **kwargs: (_ for _ in ()).throw(RuntimeError("write failed")))
+    with pytest.raises(DocumentVectorStoreError, match="기존 검색 색인을 복원"):
+        with preserve_corpus_on_failure(tmp_path):
+            # Keep one original ID, replacing its contents as well as adding new IDs.
+            new = rows("new") + (rows("old")[:1] if initial else [])
+            if initial:
+                new[-1]["text"] = "졸업 규정 changed"
+            _write_corpus(service.corpus_path, new)
+            service.index_corpus(reset_collection=rebuild)
+    after = service._store._collection.get(include=["embeddings", "metadatas", "documents"])
+    def normalized(snapshot):
+        return {key: (doc, meta, tuple(vector)) for key, doc, meta, vector in zip(
+            snapshot["ids"], snapshot["documents"], snapshot["metadatas"],
+            snapshot["embeddings"] if snapshot["ids"] else [])}
+    assert normalized(after) == normalized(before)
+    assert (service.corpus_path.read_bytes() if service.corpus_path.exists() else None) == old_corpus
+
+
 @pytest.fixture(autouse=True)
 def _close_services():
     yield

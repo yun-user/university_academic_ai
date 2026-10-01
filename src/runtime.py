@@ -14,9 +14,9 @@ def get_search_service():
 
 def synchronize():
     from src.ingestion.build_corpus import build_corpus
-    from src.operations import project_lock
+    from src.operations import preserve_corpus_on_failure
     settings = get_settings()
-    with project_lock(settings.project_root):
+    with preserve_corpus_on_failure(settings.project_root):
         corpus = build_corpus(settings.project_root)
         if corpus.report["errors"]:
             raise ValueError("전처리 오류가 있습니다. 처리 보고서를 확인하세요. 기존 색인은 유지됩니다.")

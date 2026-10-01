@@ -274,9 +274,7 @@ class DocumentSearchService:
         vectors = self._embeddings.embed_documents(
             [chunk.embedding_text for chunk in chunks]
         )
-        if reset_collection:
-            self._store.reset_collection()
-        sync_report = self._store.sync_chunks(chunks, vectors)
+        sync_report = self._store.sync_chunks(chunks, vectors, reset_collection=reset_collection)
         logical_documents = {
             (record.document_id, record.file_name, record.file_type)
             for record in indexed_records
