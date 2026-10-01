@@ -278,9 +278,7 @@ class DocumentSearchService:
         vectors = self._embeddings.embed_documents(
             [chunk.embedding_text for chunk in chunks]
         )
-        if reset_collection:
-            self._store.reset_collection()
-        sync_report = self._store.sync_chunks(chunks, vectors)
+        sync_report = self._store.sync_chunks(chunks, vectors, reset_collection=reset_collection)
         logical_documents = {
             (record.document_id, record.file_name, record.file_type)
             for record in indexed_records
@@ -356,8 +354,8 @@ class DocumentSearchService:
             tuple[str, str, int | None, int | None, str]
         ] = []
         seen_ids: set[str] = set()
-        seen_contents: set[str] = set()
-        seen_courses: set[tuple[str, str]] = set()
+        seen_contents: set[tuple] = set()
+        seen_courses: set[tuple] = set()
         for candidate in candidates:
             normalized = self._normalized(candidate.content)
             course = (
@@ -365,10 +363,13 @@ class DocumentSearchService:
                 if candidate.file_type == "csv"
                 else None
             )
-            course_key = (
-                normalize_text(candidate.department),
-                normalize_text(course.course_name).replace(" ", ""),
-            ) if course is not None else None
+            scope = (candidate.department, candidate.document_type, candidate.source_year,
+                     candidate.track, candidate.admission_year_from, candidate.admission_year_to)
+            content_key = (*scope, normalized)
+            # A shared name is not a duplicate: credits/codes can differ by
+            # curriculum version. Preserve each distinct value and scope.
+            course_key = (*scope, normalize_text(course.course_name).replace(" ", ""),
+                          course.grade, course.completion_type, course.semesters) if course is not None else None
             same_locator_similar = any(
                 candidate.document_id == document_id
                 and candidate.file_name == file_name
@@ -386,14 +387,14 @@ class DocumentSearchService:
             )
             if (
                 candidate.chunk_id in seen_ids
-                or normalized in seen_contents
+                or content_key in seen_contents
                 or (course_key is not None and course_key in seen_courses)
-                or same_locator_similar
+                or (course is None and same_locator_similar)
             ):
                 continue
             kept.append(candidate)
             seen_ids.add(candidate.chunk_id)
-            seen_contents.add(normalized)
+            seen_contents.add(content_key)
             if course_key is not None:
                 seen_courses.add(course_key)
             source_texts.append(
@@ -595,6 +596,7 @@ class DocumentSearchService:
             question_intent is QuestionIntent.COURSE_LIST
             and course_intent.has_structured_conditions
             and effective_department is not None
+            and document_type in {None, COURSE_DOCUMENT_TYPE}
         )
         record_count = self.indexed_chunk_count
         if record_count == 0:

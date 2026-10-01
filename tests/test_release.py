@@ -169,6 +169,16 @@ def test_llm_exact_quote_and_trusted_url():
     assert provider.calls == 1
 
 
+def test_same_named_documents_keep_distinct_citations():
+    from src.answering.answer_service import AnswerService
+    from src.answering.models import deduplicate_answer_sources
+    first = result(document_id="old", chunk_id="old-1")
+    second = result(document_id="new", chunk_id="new-1")
+    sources = [AnswerService._source(r, r.text) for r in [first, second]]
+    assert len(deduplicate_answer_sources(sources)) == 2
+    assert len(deduplicate_answer_sources([sources[0], sources[0]])) == 1
+
+
 @pytest.mark.parametrize("claim", [
     {"quote": "장학금은 무조건 999만원 지급됩니다.", "evidence_id": "chunk-1"},
     {"quote": "장학금 신청 기간은 2026년 3월 1일부터 3월 10일까지입니다.", "evidence_id": "invented"},

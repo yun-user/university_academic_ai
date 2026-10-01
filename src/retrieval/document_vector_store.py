@@ -209,38 +209,59 @@ class ChromaDocumentVectorStore:
         self,
         chunks: Sequence[CorpusChunk],
         embeddings: Sequence[Sequence[float]],
+        *,
+        reset_collection: bool = False,
     ) -> CorpusStoreSyncReport:
         """현재 corpus snapshot과 일치하도록 upsert 후 stale 청크를 제거한다."""
 
         vectors = self._validate_vectors(chunks, embeddings)
-        previous_ids = self._all_ids()
+        snapshot = self._collection.get(include=["embeddings", "documents", "metadatas"])
+        previous_ids = set(snapshot["ids"])
         current_ids = {chunk.chunk_id for chunk in chunks}
-        if chunks:
-            try:
-                self._collection.upsert(
-                    ids=[chunk.chunk_id for chunk in chunks],
-                    embeddings=vectors,
-                    documents=[chunk.content for chunk in chunks],
-                    metadatas=[self._metadata(chunk) for chunk in chunks],
-                )
-            except Exception as error:
-                raise DocumentVectorStoreError(
-                    "통합 문서 청크 저장에 실패했습니다."
-                ) from error
-
+        batch_size = self._client.get_max_batch_size()
         stale_ids = sorted(previous_ids - current_ids)
-        if stale_ids:
+        try:
+            if reset_collection:
+                self.reset_collection()
+            if chunks:
+                for start in range(0, len(chunks), batch_size):
+                    batch = chunks[start:start + batch_size]
+                    self._collection.upsert(
+                        ids=[chunk.chunk_id for chunk in batch],
+                        embeddings=vectors[start:start + batch_size],
+                        documents=[chunk.content for chunk in batch],
+                        metadatas=[self._metadata(chunk) for chunk in batch],
+                    )
+            if stale_ids:
+                for start in range(0, len(stale_ids), batch_size):
+                    self._collection.delete(ids=stale_ids[start:start + batch_size])
+        except Exception as error:
+            # A batch may already have committed. Restore vectors as well as text
+            # before the outer synchronization restores its corpus snapshot.
             try:
-                self._collection.delete(ids=stale_ids)
-            except Exception as error:
+                for start in range(0, len(snapshot["ids"]), batch_size):
+                    end = start + batch_size
+                    self._collection.upsert(
+                        ids=snapshot["ids"][start:end],
+                        embeddings=snapshot["embeddings"][start:end],
+                        documents=snapshot["documents"][start:end],
+                        metadatas=snapshot["metadatas"][start:end],
+                    )
+                added = sorted(self._all_ids() - previous_ids)
+                for start in range(0, len(added), batch_size):
+                    self._collection.delete(ids=added[start:start + batch_size])
+            except Exception as restore_error:
                 raise DocumentVectorStoreError(
-                    "통합 색인의 stale 청크 삭제에 실패했습니다."
-                ) from error
+                    "색인 저장과 복원에 실패했습니다. 검색을 중단하고 scripts.prepare로 다시 준비하세요."
+                ) from restore_error
+            raise DocumentVectorStoreError(
+                "색인 저장에 실패해 기존 검색 색인을 복원했습니다."
+            ) from error
         return CorpusStoreSyncReport(
             attempted_count=len(chunks),
-            inserted_count=len(current_ids - previous_ids),
-            updated_count=len(current_ids & previous_ids),
-            removed_stale_count=len(stale_ids),
+            inserted_count=len(current_ids) if reset_collection else len(current_ids - previous_ids),
+            updated_count=0 if reset_collection else len(current_ids & previous_ids),
+            removed_stale_count=0 if reset_collection else len(stale_ids),
         )
 
     def list_candidates(

@@ -533,7 +533,7 @@ def test_unregistered_supported_file_is_processed_and_warned(
     assert result.report["failed_files"] == 0
 
 
-def test_manifest_entry_without_actual_file_is_warned(
+def test_manifest_entry_without_actual_file_blocks_publication(
     corpus_root: Path,
 ) -> None:
     _write_manifest(corpus_root, [_manifest_row("missing.txt", "txt")])
@@ -541,7 +541,8 @@ def test_manifest_entry_without_actual_file_is_warned(
     result = build_corpus(project_root=corpus_root)
 
     assert result.documents == []
-    assert "MANIFEST_FILE_NOT_FOUND" in _warning_codes(result.report)
+    assert any(item["code"] == "MANIFEST_FILE_NOT_FOUND" for item in result.report["errors"])
+    assert not (corpus_root / "data/processed/documents.jsonl").exists()
     assert result.report["total_files"] == 0
     assert result.report["failed_files"] == 0
 

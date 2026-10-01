@@ -308,9 +308,18 @@ class AnswerService:
             )
 
         lines = [heading, ""]
+        versions = {}
+        for result, course in courses:
+            key = (normalize_text(result.department), normalize_text(course.course_name).replace(" ", ""))
+            versions.setdefault(key, set()).add(course)
+        has_conflict = any(len(values) > 1 for values in versions.values())
+        if has_conflict:
+            lines = ["**자료별 교과목 정보가 다릅니다.** 같은 과목명의 학점·학수번호·이수 조건이 달라 자료별로 표시합니다. 본인에게 적용되는 교육과정 연도를 확인하세요.", ""]
         sources: list[AnswerSource] = []
         for index, (result, course) in enumerate(courses, start=1):
             semester = cls._answer_semester(course, intent.semester)
+            if has_conflict:
+                lines.append(f"자료: {result.file_name} · 기준연도 {result.source_year or '미지정'} · CSV {result.row_number}행")
             lines.extend(
                 (
                     f"{index}. {course.course_name}",
@@ -945,6 +954,7 @@ class AnswerService:
     def _source(result: DocumentSearchResult, excerpt: str) -> AnswerSource:
         return AnswerSource(
             chunk_id=result.chunk_id,
+            document_id=result.document_id,
             file_name=result.file_name,
             file_type=result.file_type,
             source_year=result.source_year,

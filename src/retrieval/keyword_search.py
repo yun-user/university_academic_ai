@@ -11,6 +11,8 @@ import math
 from pathlib import Path
 import re
 import unicodedata
+import logging
+from tempfile import NamedTemporaryFile
 
 
 @lru_cache(maxsize=1)
@@ -39,18 +41,35 @@ class KeywordIndex:
         if path and path.exists():
             try:
                 cached = json.loads(path.read_text(encoding="utf-8"))
-                if cached.get("version") == 1 and cached.get("signature") == signature:
+                if (isinstance(cached, dict) and cached.get("version") == 1
+                        and cached.get("signature") == signature
+                        and isinstance(cached.get("tokens"), dict)
+                        and set(cached["tokens"]) == set(self.candidates)
+                        and all(isinstance(value, list) and all(isinstance(t, str) for t in value)
+                                for value in cached["tokens"].values())):
                     tokens = cached["tokens"]
             except (ValueError, OSError, KeyError):
                 pass
         if tokens is None:
             tokens = {c.chunk_id: list(tokenize(c.content)) for c in candidates}
             if path:
-                path.parent.mkdir(parents=True, exist_ok=True)
-                temporary = path.with_suffix(".tmp")
-                temporary.write_text(json.dumps({"version": 1, "signature": signature,
-                    "tokens": tokens}, ensure_ascii=False), encoding="utf-8")
-                temporary.replace(path)
+                temporary = None
+                try:
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    with NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent,
+                                            suffix=".tmp", delete=False) as handle:
+                        temporary = Path(handle.name)
+                        json.dump({"version": 1, "signature": signature,
+                                   "tokens": tokens}, handle, ensure_ascii=False)
+                    temporary.replace(path)
+                except OSError:
+                    logging.getLogger(__name__).warning("검색 캐시를 저장하지 못해 메모리에서 검색합니다.")
+                finally:
+                    if temporary:
+                        try:
+                            temporary.unlink(missing_ok=True)
+                        except OSError:
+                            pass
         self.counts = {key: Counter(value) for key, value in tokens.items()}
         self.df = Counter(term for counts in self.counts.values() for term in counts)
         self.average = sum(map(sum, (c.values() for c in self.counts.values()))) / max(1, len(tokens))
