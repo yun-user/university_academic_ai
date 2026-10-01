@@ -60,7 +60,8 @@ def graduation_topic(question: str) -> str | None:
     compact = _compact(question)
     # These concern events, employment, or a particular course, not degree
     # requirements. Never answer them with the reviewed graduation table.
-    if re.search(r"졸업식|졸업사진|졸업앨범|졸업여행|졸업후|졸업생취업", compact):
+    # 조기졸업·학위취득유예는 대학 공통 학사안내(university_guide)에서 답한다.
+    if re.search(r"졸업식|졸업사진|졸업앨범|졸업여행|졸업후|졸업생취업|조기졸업|졸업유예|학위취득유예|학위유예", compact):
         return None
     if re.search(r"졸업(논문|프로젝트|작품)", compact):
         return None

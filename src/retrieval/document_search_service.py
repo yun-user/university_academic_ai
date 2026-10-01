@@ -16,6 +16,7 @@ from pydantic import ValidationError
 from src.operations import locked_service
 from src.retrieval.keyword_search import KeywordIndex, fuse
 from src.retrieval.reviewed_rules import reviewed_rule_search
+from src.retrieval.university_guide import GUIDE_DOCUMENT_TYPE, university_guide_search
 
 from src.config import PROJECT_ROOT, Settings, get_settings
 from src.retrieval.document_chunker import chunk_corpus_record
@@ -172,9 +173,10 @@ class DocumentSearchService:
 
     def available_document_types(self) -> list[str]:
         types = self._store.list_metadata_values("document_type")
-        if (self._project_root / "config/reviewed_rules/hongik.json").is_file():
-            return sorted(set(types) | {"검토된 학사규정"})
-        return types
+        reviewed = self._project_root / "config/reviewed_rules"
+        extra = {name for name, path in (("검토된 학사규정", "hongik.json"),
+                 (GUIDE_DOCUMENT_TYPE, "hongik_academic_guide.json")) if (reviewed / path).is_file()}
+        return sorted(set(types) | extra) if extra else types
 
     def available_file_types(self) -> list[str]:
         return self._store.list_metadata_values("file_type")
@@ -581,6 +583,10 @@ class DocumentSearchService:
 
         question_intent = classify_question_intent(question)
         course_intent = parse_course_query(question)
+        # 조기졸업·성적경고 등 대학 공통 학사안내는 학과 선택과 무관하게 먼저 확인한다.
+        guide = university_guide_search(question, self._project_root, document_type)
+        if guide is not None:
+            return guide
         effective_department = self._question_department(question, department)
         if is_graduation_question(question) and effective_department is None:
             scoped_departments = [d for d in self.available_departments() if d != "전체"]

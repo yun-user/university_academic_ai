@@ -105,9 +105,13 @@ def test_department_table_replaces_conflicting_old_msc_numbers():
     assert "2019년" in text and "구분" in text
 
 def test_english_scope_before_2013_does_not_inherit_minimum_scores():
+    # 학과 홈페이지 공학인증 졸업기준: 2012년 입학생까지는 점수 무관, 유효 성적표 제출
     result = answer("2012학번 심화과정 영어 졸업요건")
-    assert result.status == AnswerStatus.INSUFFICIENT_EVIDENCE
-    assert "TOEIC 600" not in result.text
+    assert result.status == AnswerStatus.ANSWERED
+    assert "점수와 관계없이" in result.text and "졸업사정 전까지" in result.text
+    assert "New TEPS 227" not in result.text
+    assert [s.file_name for s in result.sources] == ["english-standard_reviewed.txt"]
+    assert answer("2003학번 심화과정 영어 졸업요건").status == AnswerStatus.INSUFFICIENT_EVIDENCE
 
 def test_source_corruption_blocks_stale_fallback(tmp_path):
     shutil.copytree(ROOT / "config/reviewed_rules", tmp_path / "config/reviewed_rules")

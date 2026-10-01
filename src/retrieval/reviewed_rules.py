@@ -100,14 +100,21 @@ def reviewed_rule_search(question, department, project_root, document_type=None)
         return _college_answer(root, topic, year, "일반" if general else "심화" if advanced else None, unavailable)
     if topic != "english" and year is not None and year < data["admission_year_from"]:
         return unavailable(f"현재 검토된 자료로는 {year}학번의 졸업요건을 확정할 수 없습니다. {data['admission_year_from']}학번 이후 구간만 검토되어 있습니다. 해당 학번의 졸업요건 원문을 추가로 확인해야 합니다.")
-    if topic == "english" and year is not None and year < 2013:
-        return unavailable("2024년 첨부표의 공인시험 최저점수 조항은 2013학번부터 심화과정 대상입니다. 2013년 이전 입학생의 외국어 요건은 해당 학번 내규를 추가 확인해야 합니다.")
+    pre2013_english = topic == "english" and year is not None and year < 2013
+    if pre2013_english and year < data["admission_year_from"]:
+        return unavailable(f"현재 검토된 자료로는 {year}학번의 외국어 졸업요건을 확정할 수 없습니다. 해당 학번 내규를 추가 확인해야 합니다.")
 
-    used_ids = {"english-amendment", "english-scores"} if topic == "english" else {"graduation-table"}
+    if pre2013_english:
+        # 학과 홈페이지: 2012년 입학생까지는 최저점수 없이 유효 성적표 제출로 인정
+        used_ids = {"english-standard"}
+    elif topic == "english":
+        used_ids = {"english-amendment", "english-scores"}
+    else:
+        used_ids = {"graduation-table"}
     if topic == "overview":
         used_ids.add("english-amendment")
     intro = "소프트웨어융합학과의 **공학교육인증 심화과정** 자료에서 확인한 내용입니다."
-    body = sections.get(topic, sections["overview"])
+    body = sections["english_pre2013"] if pre2013_english else sections.get(topic, sections["overview"])
     if topic == "overview":
         body += "\n\n" + sections["amendment"]
     if topic == "english" and re.search(r"대체|생활영어|실용영어|교양중국어|교양일본어", value):
