@@ -50,13 +50,12 @@ class CourseQueryIntent:
 
     @property
     def has_structured_conditions(self) -> bool:
-        """학년·학기·이수구분을 모두 추출했는지 반환한다."""
+        """학년·학기를 모두 추출했는지 반환한다. 이수구분은 선택 조건이다."""
 
         return (
             self.is_course_query
             and self.grade is not None
             and self.semester is not None
-            and bool(self.completion_types)
         )
 
 

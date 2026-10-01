@@ -60,3 +60,4 @@ def test_colloquial_major_credit_questions_get_focused_answer():
         assert "2019년" in text and "심화과정" in text
         assert len(text) < 600
         assert "디자인엔지니어링" not in text
+

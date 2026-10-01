@@ -158,7 +158,7 @@ class LLMAnswerService:
             document_type=document_type,
         )
         response = deterministic.search_response
-        if reviewed_graduation(question, response.results):
+        if response.reviewed_answer or reviewed_graduation(question, response.results):
             return deterministic
         if (
             not self.available
@@ -234,6 +234,8 @@ class LLMAnswerService:
             )
             answer_format = _answer_format(sources)
             final_text = _append_trusted_sources(answer_text, cited_results)
+            if response.scope_notice:
+                final_text = f"{response.scope_notice}\n\n{final_text}"
             return AnswerResponse(
                 question=deterministic.question,
                 status=AnswerStatus.ANSWERED,

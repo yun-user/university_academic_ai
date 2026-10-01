@@ -50,6 +50,31 @@ UNKNOWN_RULE_SCOPE_MESSAGE = (
 ACADEMIC_RULE_CONFLICT_NOTICE = "자료별 적용 기준이 다릅니다."
 _EXCERPT_LIMIT = 360
 _SENTENCE_BOUNDARY = re.compile(r"(?<=[.!?。])\s+|\n+")
+_QUESTION_TOKEN = re.compile(r"[0-9A-Za-z가-힣]{2,}")
+
+
+def _word_stem(word: str) -> str:
+    """조사·어미·'하다/되다' 접미사 앞까지만 남긴다. 예: 선발해 → 선발."""
+
+    from src.retrieval.keyword_search import _kiwi
+
+    for token in _kiwi().tokenize(word):
+        if token.tag.startswith(("J", "E")) or token.tag in {"XSV", "XSA", "VCP"}:
+            return word[: token.start]
+    return word
+
+
+def _has_lexical_support(question: str, text: str) -> bool:
+    """질문 어절이나 그 어간 중 하나라도 근거 원문에 있는지 확인한다."""
+
+    content = normalize_text(text).replace(" ", "")
+    for word in _QUESTION_TOKEN.findall(normalize_text(question)):
+        if word in content:
+            return True
+        stem = _word_stem(word)
+        if len(stem) >= 2 and stem in content:
+            return True
+    return False
 
 
 class SearchService(Protocol):
@@ -119,6 +144,19 @@ class AnswerService:
     ) -> AnswerResponse:
         """이미 검색된 결과를 재검색 없이 결정적으로 답변으로 바꾼다."""
 
+        answer = cls._compose(question, response)
+        if response.scope_notice and answer.status is AnswerStatus.ANSWERED:
+            answer = answer.model_copy(
+                update={"text": f"{response.scope_notice}\n\n{answer.text}"}
+            )
+        return answer
+
+    @classmethod
+    def _compose(
+        cls,
+        question: str,
+        response: DocumentSearchResponse,
+    ) -> AnswerResponse:
         normalized_question = question.strip()
         if not normalized_question:
             raise ValueError("답변할 질문은 비워 둘 수 없습니다.")
@@ -129,12 +167,18 @@ class AnswerService:
                 status=AnswerStatus.INSUFFICIENT_EVIDENCE,
                 answer_format=AnswerFormat.NONE,
                 text=(
-                    response.clarification_message or NO_ACADEMIC_RULE_MESSAGE
+                    response.clarification_message or (NO_ACADEMIC_RULE_MESSAGE
                     if question_intent is QuestionIntent.ACADEMIC_RULE
-                    else NO_EVIDENCE_MESSAGE
+                    else NO_EVIDENCE_MESSAGE)
                 ),
                 search_response=response,
             )
+
+        if response.reviewed_answer:
+            return AnswerResponse(question=normalized_question, status=AnswerStatus.ANSWERED,
+                answer_format=AnswerFormat.TXT, text=response.reviewed_answer,
+                sources=[cls._source(result, result.text) for result in response.results],
+                search_response=response)
 
         if question_intent is QuestionIntent.ACADEMIC_RULE:
             reviewed = reviewed_graduation(normalized_question, response.results)
@@ -204,6 +248,16 @@ class AnswerService:
                 response,
                 primary,
             )
+        if not _has_lexical_support(normalized_question, primary.text):
+            # 의미 검색 점수만 넘고 질문 단어가 하나도 없는 문단을 답으로
+            # 내보내지 않는다. 예: "졸업식 언제야?" → 내규의 "제5조 (강의 배정)".
+            return AnswerResponse(
+                question=normalized_question,
+                status=AnswerStatus.INSUFFICIENT_EVIDENCE,
+                answer_format=AnswerFormat.NONE,
+                text=NO_EVIDENCE_MESSAGE,
+                search_response=response,
+            )
         if primary.file_type == "pdf":
             return cls._document_answer(
                 normalized_question,
@@ -244,8 +298,8 @@ class AnswerService:
             completion = "·".join(intent.completion_types)
             heading = (
                 f"{first_result.department} {intent.grade}학년 "
-                f"{intent.semester}학기 {completion} 과목은 "
-                f"총 {len(courses)}개입니다."
+                f"{intent.semester}학기 {completion + ' ' if completion else ''}"
+                f"과목은 총 {len(courses)}개입니다."
             )
         else:
             heading = (
@@ -260,7 +314,7 @@ class AnswerService:
             lines.extend(
                 (
                     f"{index}. {course.course_name}",
-                    f"   - 학수번호: {semester.course_code or '미지정'}",
+                    f"   - 학수번호: {'미지정(원문: 부학기)' if semester.course_code == '부학기' else semester.course_code or '미지정'}",
                     f"   - 학점: {semester.credits or '미지정'}",
                     f"   - 시수: {semester.hours or '미지정'}",
                 )
@@ -307,6 +361,9 @@ class AnswerService:
                 return requested
             return SemesterCourseInfo(semester=requested_semester)
         if available:
+            with_real_code = [item for item in available if item.course_code and item.course_code != '부학기']
+            if with_real_code:
+                return with_real_code[0]
             return available[0]
         return SemesterCourseInfo(semester=requested_semester or 1)
 

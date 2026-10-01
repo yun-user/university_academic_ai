@@ -1,0 +1,70 @@
+{
+  "source_url": "https://software.hongik.ac.kr/home/templates/curriculum/courses",
+  "source_file": "design_courses.html",
+  "sha256": "7286ccd2a3462a7495aec0f01e85a03a909ae7da343a23cb6c253c8e4e69639f",
+  "reviewed_on": "2026-09-12",
+  "applies_by": "course_taken_year",
+  "effective_from": 2019,
+  "rows": [
+    {
+      "name": "알고리즘및실습",
+      "design_credits": 1,
+      "kind": "요소설계"
+    },
+    {
+      "name": "머신러닝및실습(2)",
+      "design_credits": 1,
+      "kind": "요소설계"
+    },
+    {
+      "name": "종합설계(2)",
+      "design_credits": 3,
+      "kind": "종합설계"
+    },
+    {
+      "name": "창의적공학설계입문",
+      "design_credits": 2,
+      "kind": "기초설계"
+    },
+    {
+      "name": "디자인패턴프로그래밍 및 실습",
+      "design_credits": 2,
+      "kind": "요소설계"
+    },
+    {
+      "name": "네트워크실험",
+      "design_credits": 1,
+      "kind": "요소설계"
+    },
+    {
+      "name": "종합설계(1)",
+      "design_credits": 3,
+      "kind": "종합설계"
+    },
+    {
+      "name": "소프트웨어공학",
+      "design_credits": 1,
+      "kind": "요소설계"
+    },
+    {
+      "name": "컴퓨터보안",
+      "design_credits": 1,
+      "kind": "요소설계"
+    },
+    {
+      "name": "데이타베이스및실습",
+      "design_credits": 1,
+      "kind": "요소설계"
+    },
+    {
+      "name": "통신시스템실험",
+      "design_credits": 1,
+      "kind": "요소설계"
+    },
+    {
+      "name": "오픈소스소프트웨어",
+      "design_credits": 1,
+      "kind": "요소설계"
+    }
+  ]
+}

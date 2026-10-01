@@ -286,6 +286,17 @@ def _render_search_page(
                 options=[None, *document_types],
                 format_func=_document_type_label,
             )
+        from datetime import date
+        scope_columns = st.columns(2)
+        with scope_columns[0]:
+            admission_year = st.selectbox("입학연도 (선택)",
+                options=[None, *range(date.today().year, 1989, -1)],
+                format_func=lambda value: "모름 / 미선택" if value is None else f"{value}년")
+        with scope_columns[1]:
+            graduation_track = st.selectbox("졸업 과정 (선택)",
+                options=[None, "심화과정", "일반과정"],
+                format_func=lambda value: "모름 / 미선택" if value is None else value)
+        st.caption("졸업요건 질문에 적용합니다. 질문에 직접 적은 입학연도와 과정이 우선합니다.")
         submitted = st.form_submit_button(
             "검색",
             type="primary",
@@ -325,6 +336,10 @@ def _render_search_page(
         return
 
     try:
+        from src.retrieval.query_intent import is_graduation_question
+        from src.retrieval.reviewed_rules import add_scope_to_question
+        if is_graduation_question(question):
+            question = add_scope_to_question(question, admission_year, graduation_track)
         with st.spinner("관련 학사 자료를 검색하고 답변을 정리하고 있습니다..."):
             answer: AnswerResponse = selected_answer_service.answer_question(
                 question,

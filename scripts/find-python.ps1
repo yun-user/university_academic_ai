@@ -1,4 +1,4 @@
-﻿function Find-AcademicPython {
+function Find-AcademicPython {
     $candidates = @()
     if ($env:ACADEMIC_PYTHON) {
         $candidates += [pscustomobject]@{ Exe = $env:ACADEMIC_PYTHON; Args = @() }

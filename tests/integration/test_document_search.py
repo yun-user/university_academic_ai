@@ -181,6 +181,28 @@ def test_release_exact_identifier_ignores_dense_rank_and_respects_department(tmp
     assert not service.search("학수번호 009999 교과목 정보")
 
 
+def test_short_course_name_requires_unique_registered_prefix(tmp_path):
+    from src.answering.answer_service import AnswerService
+    service = _service(tmp_path)
+    def course(i, name):
+        return _record(document_id=f"course-{i}", file_name=f"{i}.csv", file_type="csv",
+            document_type="학년별교과과정", row_number=1,
+            text=_course_text(name, grade=2, completion_type="전공필수", first_code=str(704818 + i)))
+    records = [course(0, "자료구조 및 프로그래밍 실습")]
+    _write_corpus(service.corpus_path, records)
+    service.index_corpus()
+    response = service.search_with_context("자료구조 과목은 몇 학점이야?")
+    assert response.exact_match_count == 1
+    assert response.results[0].file_type == "csv"
+    assert "자료구조 및 프로그래밍 실습" in AnswerService.compose_answer("자료구조 과목은 몇 학점이야?", response).text
+    records.append(course(1, "자료구조 심화 실습"))
+    _write_corpus(service.corpus_path, records)
+    service.index_corpus()
+    response = service.search_with_context("자료구조 과목은 몇 학점이야?")
+    assert not response.results
+    assert "여러 개" in AnswerService.compose_answer("자료구조 과목은 몇 학점이야?", response).text
+
+
 def test_release_hybrid_retrieves_keyword_then_removes_disabled_chunk(tmp_path):
     service = _service(tmp_path)
     service._search_mode = "hybrid"
@@ -1102,3 +1124,95 @@ def test_unscoped_graduation_uses_single_department_or_requests_scope(tmp_path):
     assert "학과를 선택" in answer.text
     assert "60학점" not in answer.text
     assert service.search(question, department="소프트웨어융합학과")
+
+
+_RETAKE_RULE = (
+    "재수강 시 선택과목이 필수과목으로 변경된 경우 동일과목을 재수강하여 "
+    "취득하면 필수과목의 이수구분으로 인정한다."
+)
+
+
+def test_university_wide_rule_fallback_is_labeled_and_department_rule_wins(tmp_path):
+    from src.answering.answer_service import AnswerService
+    from src.retrieval.document_search_service import UNIVERSITY_WIDE_RULE_NOTICE
+    service = _service(tmp_path)
+    rows = [_record(document_id="global", file_name="전체.pdf", file_type="pdf",
+        document_type="전체교과과정", department="전체", page_number=3, text=_RETAKE_RULE)]
+    _write_corpus(service.corpus_path, rows)
+    service.index_corpus()
+    question = "재수강하면 이수구분 어떻게 처리돼?"
+
+    response = service.search_with_context(question, department="소프트웨어융합학과")
+    assert {r.document_id for r in response.results} == {"global"}
+    assert response.scope_notice == UNIVERSITY_WIDE_RULE_NOTICE
+    answer = AnswerService(service).answer_question(question, department="소프트웨어융합학과")
+    assert answer.text.startswith(UNIVERSITY_WIDE_RULE_NOTICE)
+    assert "필수 이수구분으로 인정" in answer.text
+
+    rows.append(_record(document_id="software", file_name="내규.pdf", file_type="pdf",
+        document_type="학사규정", page_number=10, text=_RETAKE_RULE))
+    _write_corpus(service.corpus_path, rows)
+    service.index_corpus()
+    response = service.search_with_context(question, department="소프트웨어융합학과")
+    assert {r.document_id for r in response.results} == {"software"}
+    assert response.scope_notice is None
+
+
+def test_grade_and_semester_list_every_course_without_completion_type(tmp_path):
+    from src.answering.answer_service import AnswerService
+    service = _service(tmp_path)
+    courses = [("자료구조", 2, "전공필수", "A1", ""), ("선형대수학", 2, "MSC", "A2", ""),
+               ("웹프로그래밍", 2, "전공선택", "A3", ""), ("디지털공학", 2, "전공선택", "A4", ""),
+               ("운영체제", 3, "전공선택", "B1", ""), ("통신이론", 2, "전공선택", "", "C1")]
+    _write_corpus(service.corpus_path, [
+        _record(document_id="COURSES", file_name="교과과정.csv", file_type="csv",
+            document_type="학년별교과과정", row_number=index,
+            text=_course_text(name, grade=grade, completion_type=kind,
+                              first_code=first, second_code=second))
+        for index, (name, grade, kind, first, second) in enumerate(courses, 1)])
+    service.index_corpus()
+
+    answer = AnswerService(service).answer_question(
+        "2학년 1학기 과목 목록 보여줘", top_k=3, department="소프트웨어융합학과")
+
+    assert answer.search_response.exact_match_count == 4
+    assert "2학년 1학기 과목은 총 4개입니다." in answer.text
+    assert "운영체제" not in answer.text and "통신이론" not in answer.text
+
+
+@pytest.mark.parametrize("question", ["자료구조 몇 학점이야?", "자료구조는 몇 학점이야?"])
+def test_short_course_name_lookup_without_the_word_course(tmp_path, question):
+    service = _service(tmp_path)
+    _write_corpus(service.corpus_path, [
+        _record(document_id="COURSES", file_name="교과과정.csv", file_type="csv",
+            document_type="학년별교과과정", row_number=1,
+            text=_course_text("자료구조 및 프로그래밍 실습", grade=2,
+                              completion_type="전공필수", first_code="704818")),
+        _record(document_id="RULES", file_name="내규.pdf", file_type="pdf",
+            document_type="학사규정", page_number=1, text="전공 과목은 학점을 인정한다."),
+    ])
+    service.index_corpus()
+
+    response = service.search_with_context(question, department="소프트웨어융합학과")
+
+    assert response.exact_match_count == 1
+    assert response.results[0].row_number == 1
+
+
+def test_paragraph_without_any_question_term_is_not_an_answer():
+    from src.answering.answer_service import AnswerService, NO_EVIDENCE_MESSAGE
+    from src.retrieval.document_models import DocumentSearchResponse, DocumentSearchResult
+    def result(text):
+        return DocumentSearchResult(document_id="RULES", chunk_id="RULES:1", file_name="내규.pdf",
+            file_type="pdf", document_type="학사규정", department="소프트웨어융합학과", title="내규",
+            source_path="data/raw/pdfs/내규.pdf", page_number=11, text=text, score=0.5,
+            content_hash=hashlib.sha256(text.encode()).hexdigest())
+
+    unrelated = AnswerService.compose_answer(
+        "졸업식 언제야?", DocumentSearchResponse(results=[result("제 5조 (강의 배정)\n강의는 교수회의에서 배정한다.")]))
+    related = AnswerService.compose_answer(
+        "장학금은 누가 선발해?", DocumentSearchResponse(results=[result("장학생은 프로그램 교수회의에서 선발한다.")]))
+
+    assert unrelated.text == NO_EVIDENCE_MESSAGE
+    assert "선발한다" in related.text
+
