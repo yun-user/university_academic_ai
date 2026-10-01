@@ -169,7 +169,14 @@ class DocumentSearchService:
         return self._corpus_path
 
     def available_departments(self) -> list[str]:
-        return self._store.list_metadata_values("department")
+        departments = self._store.list_metadata_values("department")
+        # 검토 규정 번들은 색인 없이도 답하므로 그 학과도 선택지에 포함한다.
+        try:
+            reviewed = json.loads((self._project_root / "config/reviewed_rules/hongik.json")
+                                  .read_text(encoding="utf-8"))["department"]
+        except (OSError, ValueError, KeyError, TypeError):
+            return departments
+        return departments if reviewed in departments else sorted({*departments, reviewed})
 
     def available_document_types(self) -> list[str]:
         types = self._store.list_metadata_values("document_type")
