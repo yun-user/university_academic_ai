@@ -11,16 +11,6 @@ from pathlib import Path
 import re
 import unicodedata
 
-from src.retrieval.college_rules import (
-    CollegeRulesUnavailable,
-    both_tracks_answer,
-    cohort_answer,
-    cohort_result,
-    covered_years,
-    find_cohort,
-    load_college_rules,
-    track_overview_answer,
-)
 from src.retrieval.document_models import DocumentSearchResponse, DocumentSearchResult
 from src.retrieval.query_intent import QuestionIntent, graduation_topic
 
@@ -86,8 +76,8 @@ def reviewed_rule_search(question, department, project_root, document_type=None)
         return unavailable("공개 규정만으로 개인의 졸업 가능 여부를 확정할 수 없습니다. 본인의 입학연도·졸업 과정과 학교의 졸업사정 결과를 확인해 주세요. 일반적인 졸업요건 안내는 가능합니다.")
     general = bool(re.search(r"일반과정|비인증", value))
     advanced = bool(re.search(r"심화|공학인증", value))
-    if general and topic in {"english", "design"}:
-        return unavailable("현재 검토된 영어·설계학점 기준은 공학교육인증 심화과정 자료입니다. 일반과정에 그대로 적용할 수 없습니다. 일반과정의 해당 요건은 학과 이수내규를 추가로 확인해야 합니다.")
+    if general:
+        return unavailable("현재 검토된 자료는 공학교육인증 심화과정 기준입니다. 일반과정에 그대로 적용할 수 없습니다. 입학연도에 맞는 일반과정 졸업요건 자료가 필요합니다.")
     if topic == "design":
         from src.retrieval.design_rules import design_course_answer
         return design_course_answer(question, root)
@@ -95,44 +85,22 @@ def reviewed_rule_search(question, department, project_root, document_type=None)
     if len(years) > 1:
         return unavailable("서로 다른 입학연도가 포함되어 있습니다. 적용할 입학연도를 하나씩 지정해 주세요.")
     year = next(iter(years), None)
-    # 학과 심화 표(2004–2020학번)에 없는 일반과정·2021학번 이후는 단과대학 표로 안내한다.
-    if topic != "english" and (general or (year is not None and year > data["admission_year_to"])):
-        return _college_answer(root, topic, year, "일반" if general else "심화" if advanced else None, unavailable)
-    if topic != "english" and year is not None and year < data["admission_year_from"]:
-        return unavailable(f"현재 검토된 자료로는 {year}학번의 졸업요건을 확정할 수 없습니다. {data['admission_year_from']}학번 이후 구간만 검토되어 있습니다. 해당 학번의 졸업요건 원문을 추가로 확인해야 합니다.")
-    pre2013_english = topic == "english" and year is not None and year < 2013
-    if pre2013_english and year < data["admission_year_from"]:
-        return unavailable(f"현재 검토된 자료로는 {year}학번의 외국어 졸업요건을 확정할 수 없습니다. 해당 학번 내규를 추가 확인해야 합니다.")
+    if topic != "english" and year is not None and not data["admission_year_from"] <= year <= data["admission_year_to"]:
+        return unavailable(f"현재 검토된 학과 학점 표만으로는 {year}학번의 졸업요건을 확정할 수 없습니다. 표에는 2020학번까지의 구분이 있고 2021학번 이후 항목은 없습니다. 해당 학번의 일반/심화과정 졸업요건 원문을 추가로 확인해야 합니다.")
+    if topic == "english" and year is not None and year < 2013:
+        return unavailable("2024년 첨부표의 공인시험 최저점수 조항은 2013학번부터 심화과정 대상입니다. 2013년 이전 입학생의 외국어 요건은 해당 학번 내규를 추가 확인해야 합니다.")
 
-    if pre2013_english:
-        # 학과 홈페이지: 2012년 입학생까지는 최저점수 없이 유효 성적표 제출로 인정
-        used_ids = {"english-standard"}
-    elif topic == "english":
-        used_ids = {"english-amendment", "english-scores"}
-    else:
-        used_ids = {"graduation-table"}
+    used_ids = {"english-amendment", "english-scores"} if topic == "english" else {"graduation-table"}
     if topic == "overview":
         used_ids.add("english-amendment")
     intro = "소프트웨어융합학과의 **공학교육인증 심화과정** 자료에서 확인한 내용입니다."
-    body = sections["english_pre2013"] if pre2013_english else sections.get(topic, sections["overview"])
+    body = sections.get(topic, sections["overview"])
     if topic == "overview":
         body += "\n\n" + sections["amendment"]
     if topic == "english" and re.search(r"대체|생활영어|실용영어|교양중국어|교양일본어", value):
         # Never infer enrollment semester from an admission year or approve an
         # old course: the notice alone does not establish grandfathering rules.
         body += "\n\n개인 적용을 확인하려면 **해당 과목의 실제 이수연도·학기**가 필요합니다. 입학연도가 아닌 이수시기가 기준입니다. 2024학년도 2학기 이전 이수자의 인정 여부도 이 공지만으로 확정하지 않습니다."
-    college_results = []
-    if year is None and topic != "english":
-        try:
-            rules = load_college_rules(root)
-        except CollegeRulesUnavailable:
-            rules = None
-        if rules is not None:
-            recent = [find_cohort(rules, "심화", 2021), find_cohort(rules, "심화", 2022)]
-            college_results = [cohort_result(rules, cohort) for cohort in recent if cohort]
-            body += ("\n\n**2021학번 이후 심화과정:** 위 학과 표에는 2021학번 이후 열이 없습니다. "
-                     "2026 교과과정 책자(안)의 AID융합과학기술대학 표는 2019–2021학번을 같은 132학점 체계(전공 54·MSC 30·전문교양 23·특성화교양 3)로, "
-                     "**2022학번부터는 SW/데이터활용역량인증과목 9학점을 추가**로 요구합니다. 입학연도를 알려주시면 해당 기준으로 안내합니다.")
     checks = []
     if year is None:
         checks.append("입학연도")
@@ -159,28 +127,5 @@ def reviewed_rule_search(question, department, project_root, document_type=None)
             track="심화과정", authority="홍익대학교 소프트웨어융합학과",
             is_current=None, currentness_warning="적용 학번·과정·후속 개정 확인 필요"))
         links.append(f"- [{source['title']}]({source['url']})")
-    if college_results:
-        results.extend(college_results)
-        links.append("- 2026_홍익대학교_전체교과과정.pdf · PDF 8쪽(인쇄 6쪽) · AID융합과학기술대학 졸업학점 현황")
     return DocumentSearchResponse(results=results, question_intent=QuestionIntent.ACADEMIC_RULE,
         reviewed_answer=intro + "\n\n" + body + scope_note + end + "\n\n출처:\n" + "\n".join(links))
-
-
-def _college_answer(root, topic, year, track, unavailable):
-    """단과대학 표에서 입학연도·과정에 맞는 구간을 골라 답한다. 모르는 값은 추정하지 않는다."""
-    try:
-        rules = load_college_rules(root)
-    except CollegeRulesUnavailable:
-        return unavailable("검토된 단과대학 졸업학점표 원본을 확인할 수 없어 답변을 보류합니다. 관리자에게 원본 자료 복구와 재검토를 요청해 주세요.")
-    if year is None:
-        return track_overview_answer(rules, track, topic)
-    if track is None:
-        answer = both_tracks_answer(rules, year, topic)
-    else:
-        cohort = find_cohort(rules, track, year)
-        answer = cohort_answer(rules, cohort, topic) if cohort else None
-    if answer is None:
-        low, high = covered_years(rules, track or "심화")
-        return unavailable(f"현재 검토된 자료에는 {year}학번의 {'일반과정' if track == '일반' else '졸업'} 기준이 없습니다. "
-                           f"2026 교과과정 책자(안)의 표는 {low}–{high}학번 구간을 다룹니다. 해당 학번의 졸업요건 원문을 추가로 확인해야 합니다.")
-    return answer

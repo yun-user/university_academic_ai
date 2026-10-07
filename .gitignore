@@ -54,3 +54,21 @@ data/uploads/
 data/tessdata/
 evals/local_runs/
 evals/private_questions/
+
+# Source-review scratch files (never student records)
+tmp/planner_review/
+output/planner/
+
+# Standalone web app dependencies, builds and explicitly saved student records
+frontend/node_modules/
+frontend/dist/
+frontend/*.tsbuildinfo
+data/private/
+
+# Unpacked distribution copies and local student exports
+/graduation-planner/
+path-backup*.json
+graduation-workspace*.json
+transcript*.csv
+.env.*
+!.env.example

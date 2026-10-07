@@ -185,8 +185,8 @@ def extract_pdf_file(
 
         for page_index in range(page_count):
             page_number = page_index + 1
-            page = document.load_page(page_index)
             try:
+                page = document.load_page(page_index)
                 text = _extract_page_text(page)
             except Exception as error:
                 message = f"{page_number}쪽 텍스트 추출에 실패했습니다: {error}"

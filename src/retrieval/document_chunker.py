@@ -87,13 +87,16 @@ def chunk_corpus_record(
         ),
     )
     chunks: list[CorpusChunk] = []
-    for ordinal, content in enumerate(
+    # A CSV row is one structured fact. Splitting it can detach its name/code
+    # from the semester credits and required/elective flags.
+    contents = ([record.text.strip()] if record.file_type == "csv" else
         split_text_into_chunks(
             record.text,
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
         )
-    ):
+    )
+    for ordinal, content in enumerate(contents):
         content_hash = _sha256_text(content)
         chunk_id = str(
             uuid5(

@@ -24,9 +24,7 @@ def test_selected_admission_year_reaches_answer():
     app.selectbox[3].select("심화과정")
     app.button[0].click().run()
     assert not app.exception
-    # 2023학번 심화과정 → 2026 교과과정 책자(안) AID 표의 "2022학번부터" 구간
-    assert any("심화과정 · 2022학번부터" in m.value and "SW/데이터활용역량인증과목" in m.value
-               for m in app.markdown)
+    assert any("2023학번" in m.value and "확정할 수 없습니다" in m.value for m in app.markdown)
 
 
 def test_explicit_question_track_overrides_ui_selection():
@@ -35,6 +33,4 @@ def test_explicit_question_track_overrides_ui_selection():
     app.selectbox[3].select("심화과정")
     app.button[0].click().run()
     assert not app.exception
-    assert any("일반과정(대학 표의 비인증과정) · 2020–2021학번" in m.value and "50학점 이상" in m.value
-               for m in app.markdown)
-    assert not any("54학점 이상" in m.value for m in app.markdown)
+    assert any("일반과정에 그대로 적용할 수 없습니다" in m.value for m in app.markdown)

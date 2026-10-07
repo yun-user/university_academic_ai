@@ -50,6 +50,28 @@ def test_early_graduation_is_not_answered_with_department_graduation_table():
     assert graduation_topic("졸업유예 하면 졸업요건은?") is None
 
 
+@pytest.mark.parametrize("question", ["조기졸업 조건이 뭐야?", "졸업유예 하면 졸업요건은?", "졸업을 미루려면 어떻게 해?"])
+def test_guide_is_reachable_through_search_without_index(tmp_path, question):
+    from src.retrieval.document_search_service import DocumentSearchService
+    from src.retrieval.query_intent import QuestionIntent, classify_question_intent
+
+    shutil.copytree(ROOT / "config/reviewed_rules", tmp_path / "config/reviewed_rules")
+    class EmptyStore:
+        def count(self):
+            return 0
+        def list_metadata_values(self, field):
+            return []
+    service = DocumentSearchService(embedding_provider=None, vector_store=EmptyStore(),
+        chunk_size=600, chunk_overlap=100, top_k=3, min_retrieval_score=.35,
+        dedup_similarity_threshold=.95, project_root=tmp_path)
+    assert classify_question_intent(question) is QuestionIntent.ACADEMIC_RULE
+    result = AnswerService(service).answer_question(question)
+    assert result.status is AnswerStatus.ANSWERED
+    assert result.sources[0].source_url.startswith("https://www.hongik.ac.kr/")
+    assert "학교 학사안내" in service.available_document_types()
+    assert not service.search_with_context(question, document_type="장학금").results
+
+
 def test_changed_snapshot_blocks_answer(tmp_path):
     shutil.copytree(ROOT / "config/reviewed_rules", tmp_path / "config/reviewed_rules")
     (tmp_path / "config/reviewed_rules/sources/hongik_academic-warning.html").write_text("changed")

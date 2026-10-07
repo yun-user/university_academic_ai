@@ -4,6 +4,9 @@ headless = false
 maxUploadSize = 50
 enableXsrfProtection = true
 enableCORS = true
+# Avoid traversing lazy Transformers modules during source watching.
+# Restart the app after editing Python files.
+fileWatcherType = "none"
 
 [browser]
 gatherUsageStats = false

@@ -27,6 +27,8 @@ from src.retrieval.course_search import (
     normalize_text,
     parse_course_info,
     parse_course_query,
+    requested_course_code,
+    has_course_code,
 )
 from src.retrieval.document_models import (
     CorpusChunk,
@@ -53,10 +55,6 @@ from src.retrieval.query_intent import (
 
 DEFAULT_DOCUMENT_COLLECTION_NAME = "academic_corpus_chunks_v1"
 DEFAULT_CORPUS_RELATIVE_PATH = Path("data/processed/documents.jsonl")
-UNIVERSITY_WIDE_RULE_NOTICE = (
-    "※ 선택한 학과 자료에서는 직접 규정을 찾지 못해 대학 전체 자료에서 찾은 "
-    "내용입니다. 다른 학과·단과대학 대상 규정일 수 있으니 적용 대상을 확인하세요."
-)
 
 
 def _one_character_typo(left: str, right: str) -> bool:
@@ -172,11 +170,12 @@ class DocumentSearchService:
         return self._store.list_metadata_values("department")
 
     def available_document_types(self) -> list[str]:
-        types = self._store.list_metadata_values("document_type")
-        reviewed = self._project_root / "config/reviewed_rules"
-        extra = {name for name, path in (("검토된 학사규정", "hongik.json"),
-                 (GUIDE_DOCUMENT_TYPE, "hongik_academic_guide.json")) if (reviewed / path).is_file()}
-        return sorted(set(types) | extra) if extra else types
+        types = set(self._store.list_metadata_values("document_type"))
+        if (self._project_root / "config/reviewed_rules/hongik.json").is_file():
+            types.add("검토된 학사규정")
+        if (self._project_root / "config/reviewed_rules/hongik_academic_guide.json").is_file():
+            types.add(GUIDE_DOCUMENT_TYPE)
+        return sorted(types)
 
     def available_file_types(self) -> list[str]:
         return self._store.list_metadata_values("file_type")
@@ -582,11 +581,10 @@ class DocumentSearchService:
             raise ValueError("top_k 또는 min_score가 올바르지 않습니다.")
 
         question_intent = classify_question_intent(question)
-        course_intent = parse_course_query(question)
-        # 조기졸업·성적경고 등 대학 공통 학사안내는 학과 선택과 무관하게 먼저 확인한다.
         guide = university_guide_search(question, self._project_root, document_type)
         if guide is not None:
             return guide
+        course_intent = parse_course_query(question)
         effective_department = self._question_department(question, department)
         if is_graduation_question(question) and effective_department is None:
             scoped_departments = [d for d in self.available_departments() if d != "전체"]
@@ -618,26 +616,23 @@ class DocumentSearchService:
         # Course identifiers and complete course names are exact lookups, never
         # truncated dense results. Keep metadata filters before this lookup.
         if question_intent is not QuestionIntent.ACADEMIC_RULE and document_type in {None, COURSE_DOCUMENT_TYPE}:
-            code_match = re.search(r"학수번호\s*[:#]?\s*([A-Za-z0-9-]{4,})", question)
+            code = requested_course_code(question)
             normalized_question = normalize_text(question)
             exact_named = []
             short_named = []
-            # "자료구조 몇 학점"처럼 '과목' 없이 약칭만 쓴 질문도 받는다.
-            short_match = re.search(r"([가-힣A-Za-z0-9·]{2,}?)\s*(?:교과목|과목)?(?:은|는|이|가)?\s*(?:몇|학점)", question)
+            short_match = re.search(r"([가-힣A-Za-z0-9·]{3,})\s*(?:교과목|과목)(?:은|는|이|가)?\s*(?:몇|학점)", question)
             for candidate in self._store.list_candidates(where=self._build_search_filter(
                     department=effective_department, document_type=COURSE_DOCUMENT_TYPE, file_type="csv")):
                 course = parse_course_info(candidate.content)
                 if course is None:
                     continue
-                if short_match and not code_match:
+                if short_match and not code:
                     short_name = normalize_text(short_match.group(1))
                     full_name = normalize_text(course.course_name)
                     if full_name.startswith(short_name + " "):
                         short_named.append(candidate)
-                if code_match:
-                    from src.retrieval.course_search import format_course_codes
-                    codes = re.findall(r"[A-Za-z0-9-]+", format_course_codes(course))
-                    matches = code_match.group(1) in codes
+                if code:
+                    matches = any(has_course_code(item, code) for item in course.semesters)
                 else:
                     name = normalize_text(course.course_name)
                     matches = bool(name and name in normalized_question and (
@@ -652,49 +647,193 @@ class DocumentSearchService:
                     return DocumentSearchResponse(question_intent=QuestionIntent.COURSE_LIST,
                         clarification_message="해당 이름으로 시작하는 과목이 여러 개입니다. 정식 과목명이나 학수번호를 알려 주세요.")
             if exact_named:
+                exact_named = self._course_candidates(exact_named, question=question,
+                    intent=course_intent, department=effective_department)
+                if code and course_intent.semester is not None:
+                    exact_named = [candidate for candidate in exact_named if any(
+                        item.semester == course_intent.semester and has_course_code(item, code)
+                        for item in parse_course_info(candidate.content).semesters)]
+                if not exact_named:
+                    return DocumentSearchResponse(question_intent=QuestionIntent.COURSE_LIST,
+                        structured_query=True, clarification_message=
+                        "해당 과목은 등록되어 있지만 질문의 학년·학기·이수구분과 일치하지 않습니다. 적용 조건을 확인해 주세요.")
                 exact_named = self._deduplicate(exact_named)
                 return DocumentSearchResponse(results=self._to_results(exact_named, score_kind="structured_exact"),
                     question_intent=QuestionIntent.COURSE_LIST, structured_query=True,
                     exact_match_count=len(exact_named))
-            if code_match:
+            if code:
                 return DocumentSearchResponse(question_intent=QuestionIntent.COURSE_LIST,
                                               structured_query=True)
 
         if question_intent is QuestionIntent.ACADEMIC_RULE:
-            response = self._academic_rule_response(
-                question,
-                question_intent,
-                effective_department,
+            rule_filter = self._build_search_filter(
+                department=effective_department,
                 document_type=document_type,
-                limit=limit,
-                record_count=record_count,
+                # '전체' can contain rules for another department, rather than
+                # universally applicable rules. Never widen a scoped query.
+                include_global_department=False,
             )
-            # 재수강·학사경고 같은 대학 공통 규정은 '전체' 자료에만 있다.
-            # 학과 자료에 직접 규정이 없을 때만 넓히고 답변에 그 사실을 밝힌다.
-            # 졸업요건은 학과마다 다르므로 넓히지 않는다.
-            compact_question = re.sub(r"\s+", "", question)
-            if (
-                not response.results
-                and effective_department not in {None, "전체"}
-                and (
-                    not is_graduation_question(question)
-                    or "재수강" in compact_question
+            page_context_candidates = self._store.list_candidates(
+                where=rule_filter,
+            )
+            # Graduation tables are page-level evidence. Keep the table body
+            # with its heading instead of ranking isolated heading chunks.
+            if is_graduation_question(question):
+                try:
+                    records = self._load_records(self._corpus_path)
+                except CorpusLoadError:
+                    records = []
+                tables = {(r.document_id, r.page_number): r for r in records
+                    if r.searchable and r.file_type == "pdf"
+                    and re.search(r"<표\s*\d+>[^\n]*졸업\s*요건", r.text)
+                    and re.search(r"총\s*\d+\s*학점", r.text)}
+                expanded, seen_pages = [], set()
+                for candidate in page_context_candidates:
+                    key = (candidate.document_id, candidate.page_number)
+                    if key in tables:
+                        if key in seen_pages:
+                            continue
+                        seen_pages.add(key)
+                        full_text = tables[key].text
+                        candidate = candidate.model_copy(update={"content": full_text,
+                            "content_hash": hashlib.sha256(full_text.encode()).hexdigest()})
+                    expanded.append(candidate)
+                page_context_candidates = expanded
+            semantic_candidates = self._store.query(
+                self._embeddings.embed_query(question),
+                fetch_k=record_count,
+                where=rule_filter,
+            )
+            semantic_by_id = {
+                candidate.chunk_id: candidate
+                for candidate in semantic_candidates
+            }
+            # 학사 규정은 강한 lexical 조건을 모두 만족해야 하므로 semantic
+            # top-k 누락 때문에 직접 규정이 사라지지 않게 PDF 후보 전체를
+            # 판정한다. cosine 점수는 동률 정렬과 화면 표시 용도로만 보존한다.
+            rule_candidates = [
+                candidate.model_copy(
+                    update={
+                        "distance": (
+                            semantic_by_id[candidate.chunk_id].distance
+                            if candidate.chunk_id in semantic_by_id
+                            else 1.0
+                        ),
+                        "score": (
+                            semantic_by_id[candidate.chunk_id].score
+                            if candidate.chunk_id in semantic_by_id
+                            else 0.0
+                        ),
+                    }
                 )
-                and "전체" in self.available_departments()
-            ):
-                fallback = self._academic_rule_response(
-                    question,
-                    question_intent,
-                    "전체",
-                    document_type=document_type,
-                    limit=limit,
-                    record_count=record_count,
+                for candidate in page_context_candidates
+            ]
+            directly_relevant = [
+                (candidate, academic_rule_relevance(question, candidate.content))
+                for candidate in rule_candidates
+                if candidate.file_type == "pdf" or (
+                    candidate.file_type == "txt" and candidate.document_type == "공개공지"
+                    and (candidate.source_url or "").startswith("https://"))
+            ]
+            directly_relevant = [
+                (candidate, relevance)
+                for candidate, relevance in directly_relevant
+                if relevance >= 0
+            ]
+            directly_relevant.sort(
+                key=lambda item: (
+                    bool(is_graduation_question(question)
+                         and re.search(r"<표\s*\d+>[^\n]*졸업\s*요건", item[0].content)
+                         and re.search(r"총\s*\d+\s*학점", item[0].content)),
+                    item[1],
+                    item[0].is_current is True,
+                    item[0].source_year or "",
+                    item[0].score,
+                ),
+                reverse=True,
+            )
+            rule_pool = self._deduplicate(
+                [candidate for candidate, _relevance in directly_relevant]
+            )
+            selected_rules: list[DocumentVectorCandidate] = []
+            seen_rule_blocks: set[
+                tuple[str, int | None, frozenset[str]]
+            ] = set()
+            for candidate in rule_pool:
+                signatures = academic_rule_signatures(candidate.content)
+                block_key = (
+                    candidate.document_id,
+                    candidate.page_number,
+                    signatures,
                 )
-                if fallback.results:
-                    return fallback.model_copy(
-                        update={"scope_notice": UNIVERSITY_WIDE_RULE_NOTICE}
-                    )
-            return response
+                if signatures and block_key in seen_rule_blocks:
+                    continue
+                seen_rule_blocks.add(block_key)
+                selected_rules.append(candidate)
+                if len(selected_rules) == limit:
+                    break
+            page_contexts: dict[
+                tuple[str, str, int | None],
+                list[str],
+            ] = {}
+            for candidate in page_context_candidates:
+                page_key = (
+                    candidate.document_id,
+                    candidate.file_name,
+                    candidate.page_number,
+                )
+                page_contexts.setdefault(page_key, [])
+                if candidate.content not in page_contexts[page_key]:
+                    page_contexts[page_key].append(candidate.content)
+            # 원본 corpus가 있으면 청크 순서가 보존된 동일 페이지 원문을 쓴다.
+            # 색인만 배포된 환경에서는 위의 후보 청크 문맥으로 안전하게
+            # fallback한다.
+            try:
+                corpus_records = self._load_records(self._corpus_path)
+            except CorpusLoadError:
+                corpus_records = []
+            selected_page_keys = {
+                (
+                    candidate.document_id,
+                    candidate.file_name,
+                    candidate.page_number,
+                )
+                for candidate in selected_rules
+            }
+            for record in corpus_records:
+                page_key = (
+                    record.document_id,
+                    record.file_name,
+                    record.page_number,
+                )
+                if (
+                    record.file_type == "pdf"
+                    and page_key in selected_page_keys
+                    and record.text.strip()
+                ):
+                    page_contexts[page_key] = [record.text]
+            results = self._to_results(selected_rules)
+            results = [
+                result.model_copy(
+                    update={
+                        "context_text": "\n\n".join(
+                            page_contexts.get(
+                                (
+                                    result.document_id,
+                                    result.file_name,
+                                    result.page_number,
+                                ),
+                                [result.text],
+                            )
+                        )
+                    }
+                )
+                for result in results
+            ]
+            return DocumentSearchResponse(
+                results=results,
+                question_intent=question_intent,
+            )
 
         if structured_query:
             exact_candidates = self._store.list_candidates(
@@ -788,188 +927,6 @@ class DocumentSearchService:
         selected = self._deduplicate(eligible)[:limit]
         return DocumentSearchResponse(
             results=self._to_results(selected),
-            question_intent=question_intent,
-        )
-
-    def _academic_rule_response(
-        self,
-        question: str,
-        question_intent: QuestionIntent,
-        rule_department: str | None,
-        *,
-        document_type: str | None,
-        limit: int,
-        record_count: int,
-    ) -> DocumentSearchResponse:
-        """한 학과 범위 안에서 질문에 직접 답하는 규정 PDF를 고른다."""
-
-
-        rule_filter = self._build_search_filter(
-            department=rule_department,
-            document_type=document_type,
-            # '전체' can contain rules for another department, rather than
-            # universally applicable rules. Never widen a scoped query.
-            include_global_department=False,
-        )
-        page_context_candidates = self._store.list_candidates(
-            where=rule_filter,
-        )
-        # Graduation tables are page-level evidence. Keep the table body
-        # with its heading instead of ranking isolated heading chunks.
-        if is_graduation_question(question):
-            try:
-                records = self._load_records(self._corpus_path)
-            except CorpusLoadError:
-                records = []
-            tables = {(r.document_id, r.page_number): r for r in records
-                if r.searchable and r.file_type == "pdf"
-                and re.search(r"<표\s*\d+>[^\n]*졸업\s*요건", r.text)
-                and re.search(r"총\s*\d+\s*학점", r.text)}
-            expanded, seen_pages = [], set()
-            for candidate in page_context_candidates:
-                key = (candidate.document_id, candidate.page_number)
-                if key in tables:
-                    if key in seen_pages:
-                        continue
-                    seen_pages.add(key)
-                    full_text = tables[key].text
-                    candidate = candidate.model_copy(update={"content": full_text,
-                        "content_hash": hashlib.sha256(full_text.encode()).hexdigest()})
-                expanded.append(candidate)
-            page_context_candidates = expanded
-        semantic_candidates = self._store.query(
-            self._embeddings.embed_query(question),
-            fetch_k=record_count,
-            where=rule_filter,
-        )
-        semantic_by_id = {
-            candidate.chunk_id: candidate
-            for candidate in semantic_candidates
-        }
-        # 학사 규정은 강한 lexical 조건을 모두 만족해야 하므로 semantic
-        # top-k 누락 때문에 직접 규정이 사라지지 않게 PDF 후보 전체를
-        # 판정한다. cosine 점수는 동률 정렬과 화면 표시 용도로만 보존한다.
-        rule_candidates = [
-            candidate.model_copy(
-                update={
-                    "distance": (
-                        semantic_by_id[candidate.chunk_id].distance
-                        if candidate.chunk_id in semantic_by_id
-                        else 1.0
-                    ),
-                    "score": (
-                        semantic_by_id[candidate.chunk_id].score
-                        if candidate.chunk_id in semantic_by_id
-                        else 0.0
-                    ),
-                }
-            )
-            for candidate in page_context_candidates
-        ]
-        directly_relevant = [
-            (candidate, academic_rule_relevance(question, candidate.content))
-            for candidate in rule_candidates
-            if candidate.file_type == "pdf" or (
-                candidate.file_type == "txt" and candidate.document_type == "공개공지"
-                and (candidate.source_url or "").startswith("https://"))
-        ]
-        directly_relevant = [
-            (candidate, relevance)
-            for candidate, relevance in directly_relevant
-            if relevance >= 0
-        ]
-        directly_relevant.sort(
-            key=lambda item: (
-                bool(is_graduation_question(question)
-                     and re.search(r"<표\s*\d+>[^\n]*졸업\s*요건", item[0].content)
-                     and re.search(r"총\s*\d+\s*학점", item[0].content)),
-                item[1],
-                item[0].is_current is True,
-                item[0].source_year or "",
-                item[0].score,
-            ),
-            reverse=True,
-        )
-        rule_pool = self._deduplicate(
-            [candidate for candidate, _relevance in directly_relevant]
-        )
-        selected_rules: list[DocumentVectorCandidate] = []
-        seen_rule_blocks: set[
-            tuple[str, int | None, frozenset[str]]
-        ] = set()
-        for candidate in rule_pool:
-            signatures = academic_rule_signatures(candidate.content)
-            block_key = (
-                candidate.document_id,
-                candidate.page_number,
-                signatures,
-            )
-            if signatures and block_key in seen_rule_blocks:
-                continue
-            seen_rule_blocks.add(block_key)
-            selected_rules.append(candidate)
-            if len(selected_rules) == limit:
-                break
-        page_contexts: dict[
-            tuple[str, str, int | None],
-            list[str],
-        ] = {}
-        for candidate in page_context_candidates:
-            page_key = (
-                candidate.document_id,
-                candidate.file_name,
-                candidate.page_number,
-            )
-            page_contexts.setdefault(page_key, [])
-            if candidate.content not in page_contexts[page_key]:
-                page_contexts[page_key].append(candidate.content)
-        # 원본 corpus가 있으면 청크 순서가 보존된 동일 페이지 원문을 쓴다.
-        # 색인만 배포된 환경에서는 위의 후보 청크 문맥으로 안전하게
-        # fallback한다.
-        try:
-            corpus_records = self._load_records(self._corpus_path)
-        except CorpusLoadError:
-            corpus_records = []
-        selected_page_keys = {
-            (
-                candidate.document_id,
-                candidate.file_name,
-                candidate.page_number,
-            )
-            for candidate in selected_rules
-        }
-        for record in corpus_records:
-            page_key = (
-                record.document_id,
-                record.file_name,
-                record.page_number,
-            )
-            if (
-                record.file_type == "pdf"
-                and page_key in selected_page_keys
-                and record.text.strip()
-            ):
-                page_contexts[page_key] = [record.text]
-        results = self._to_results(selected_rules)
-        results = [
-            result.model_copy(
-                update={
-                    "context_text": "\n\n".join(
-                        page_contexts.get(
-                            (
-                                result.document_id,
-                                result.file_name,
-                                result.page_number,
-                            ),
-                            [result.text],
-                        )
-                    )
-                }
-            )
-            for result in results
-        ]
-        return DocumentSearchResponse(
-            results=results,
             question_intent=question_intent,
         )
 

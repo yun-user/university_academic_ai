@@ -168,8 +168,6 @@ class DocumentSearchResponse(StrictModel):
     results: list[DocumentSearchResult] = Field(default_factory=list)
     clarification_message: str | None = None
     reviewed_answer: str | None = None
-    # 학과 범위 밖 자료로 넓혀 찾았을 때 답변 맨 앞에 붙일 안내.
-    scope_notice: str | None = None
     question_intent: QuestionIntent = QuestionIntent.GENERAL_SEARCH
     structured_query: bool = False
     exact_match_count: int = Field(default=0, ge=0)

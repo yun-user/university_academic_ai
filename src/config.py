@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import os
+import math
 import tomllib
 from dataclasses import dataclass, field
 from functools import lru_cache
@@ -215,9 +216,12 @@ def _env_int_with_legacy(primary: str, legacy: str, default: Any) -> int:
 def _env_float(name: str, default: Any) -> float:
     raw = os.getenv(name)
     try:
-        return float(default if raw is None else raw)
+        value = float(default if raw is None else raw)
     except (TypeError, ValueError) as exc:
         raise ConfigurationError(f"{name}은 숫자여야 합니다.") from exc
+    if not math.isfinite(value):
+        raise ConfigurationError(f"{name}은 유한한 숫자여야 합니다.")
+    return value
 
 
 def _resolve_project_path(value: str) -> Path:

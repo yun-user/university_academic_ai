@@ -35,63 +35,12 @@ def test_admission_year_is_not_course_completion_year():
     assert admission_years("입학연도 2018") == {2018}
     assert "이전 이수자의 인정 여부도 이 공지만으로 확정하지 않습니다" in answer("2018학번인데 영어 졸업 대체 인정돼?").text
 
-@pytest.mark.parametrize("q", ["1990학번 졸업학점", "2019학번과 2020학번 졸업요건 비교", "2027학번 심화과정 졸업요건", "2003학번 일반과정 졸업요건"])
+@pytest.mark.parametrize("q", ["2023학번 심화과정 졸업요건", "1990학번 졸업학점", "2020학번 일반과정 전공 몇 학점 필요해?", "2020학번 비인증 졸업요건", "2019학번과 2020학번 졸업요건 비교"])
 def test_unsupported_scope_does_not_claim_a_credit_requirement(q):
     result = answer(q)
     assert result.status == AnswerStatus.INSUFFICIENT_EVIDENCE
-    assert "54학점" not in result.text and "50학점" not in result.text
+    assert "54학점" not in result.text
     assert not result.sources
-
-
-# 2026 교과과정 책자(안) PDF 8~16쪽, AID융합과학기술대학 행
-@pytest.mark.parametrize("q,expected,absent,page", [
-    ("2023학번 심화과정 졸업요건", ["2022학번부터", "132학점", "54학점", "SW/데이터활용역량인증과목 | 9학점", "MSC | 30학점"], ["2022–2026"], 8),
-    ("2021학번 심화과정 MSC 몇 학점 필요해?", ["2019–2021학번", "MSC는 30학점"], [], 8),
-    ("2020학번 일반과정 전공 몇 학점 필요해?", ["일반과정", "2020–2021학번", "전공은 50학점"], ["54학점"], 12),
-    ("2020학번 비인증 졸업요건", ["MSC | 27학점", "과학 8학점, 수학 3학점, 전산 2학점"], ["SW/데이터"], 12),
-    ("2024학번 일반과정 MSC 몇 학점이야?", ["MSC는 27학점", "과학 4학점, 수학 3학점, 전산 3학점"], [], 10),
-    ("2012학번 일반과정 졸업 총학점", ["140학점"], [], 15),
-    ("2005학번 일반과정 졸업 전공 몇 학점", ["전공은 35학점"], [], 16),
-])
-def test_college_table_answers_cohorts_outside_department_table(q, expected, absent, page):
-    result = answer(q)
-    assert result.status == AnswerStatus.ANSWERED
-    for value in expected:
-        assert value in result.text
-    for value in absent:
-        assert value not in result.text
-    assert f"PDF {page}쪽" in result.text
-    assert "(안)" in result.text
-
-
-def test_year_without_track_shows_both_tracks_and_asks():
-    result = answer("21학번 졸업요건 알려줘")
-    assert result.status == AnswerStatus.ANSWERED
-    assert "심화과정(공학교육인증) | 일반과정(비인증)" in result.text
-    assert "54학점 이상" in result.text and "50학점 이상" in result.text
-    assert "일반과정/심화과정 중 어디에 속하는지" in result.text
-    assert len(result.sources) == 2
-
-
-def test_track_without_year_lists_every_cohort():
-    text = answer("일반과정 졸업요건 알려줘").text
-    assert "2024학번부터 | 132 | 50" in text and "2004–2009학번 | 140 | 35" in text
-    assert "입학연도를 알려주시면" in text
-
-
-def test_general_track_does_not_inherit_advanced_english_or_design_rules():
-    for q in ["2024학번 일반과정 영어 졸업 기준 알려줘", "일반과정 설계학점 몇 학점 필요해?"]:
-        result = answer(q)
-        assert result.status == AnswerStatus.INSUFFICIENT_EVIDENCE
-        assert "TOEIC" not in result.text and "12학점" not in result.text
-
-
-def test_college_source_corruption_blocks_answer(tmp_path):
-    shutil.copytree(ROOT / "config/reviewed_rules", tmp_path / "config/reviewed_rules")
-    (tmp_path / "config/reviewed_rules/sources/aid_graduation_credits_2026_p8-16.pdf").write_bytes(b"changed")
-    response = reviewed_rule_search("2023학번 심화과정 졸업요건", DEPT, tmp_path)
-    assert not response.results
-    assert "보류" in response.clarification_message
 
 def test_unknown_scope_is_explicit_not_assumed():
     text = answer("소프트웨어융합학과 졸업요건이 뭐야?").text
@@ -105,13 +54,9 @@ def test_department_table_replaces_conflicting_old_msc_numbers():
     assert "2019년" in text and "구분" in text
 
 def test_english_scope_before_2013_does_not_inherit_minimum_scores():
-    # 학과 홈페이지 공학인증 졸업기준: 2012년 입학생까지는 점수 무관, 유효 성적표 제출
     result = answer("2012학번 심화과정 영어 졸업요건")
-    assert result.status == AnswerStatus.ANSWERED
-    assert "점수와 관계없이" in result.text and "졸업사정 전까지" in result.text
-    assert "New TEPS 227" not in result.text
-    assert [s.file_name for s in result.sources] == ["english-standard_reviewed.txt"]
-    assert answer("2003학번 심화과정 영어 졸업요건").status == AnswerStatus.INSUFFICIENT_EVIDENCE
+    assert result.status == AnswerStatus.INSUFFICIENT_EVIDENCE
+    assert "TOEIC 600" not in result.text
 
 def test_source_corruption_blocks_stale_fallback(tmp_path):
     shutil.copytree(ROOT / "config/reviewed_rules", tmp_path / "config/reviewed_rules")

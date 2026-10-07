@@ -310,11 +310,24 @@ def _render_search_page(
         st.markdown("**답변 모드**")
         st.write(answer_mode_label)
         if answer_mode_label == "LLM 보조 답변":
-            st.caption("LLM 오류가 발생하면 기본 근거 기반 답변으로 전환합니다.")
+            st.caption("LLM 사용 설정이 켜져 있습니다. 질문에 따라 기본 근거 기반 답변을 제공할 수 있습니다.")
         elif llm_requested:
             st.caption("LLM을 사용할 수 없어 기본 답변 모드로 전환했습니다.")
         else:
             st.caption("외부 LLM을 호출하지 않고 검색 근거만으로 답변합니다.")
+        with st.expander("LLM 사용 안내"):
+            st.markdown(
+                "LLM을 연결해도 모든 질문에서 외부 LLM을 호출하지는 않습니다. "
+                "다음 경우에는 기본 근거 기반 답변을 사용합니다.\n\n"
+                "- **검토된 규정:** 졸업요건·설계학점 등 사람이 원문과 대조한 답변\n"
+                "- **정확한 표 조회:** 학수번호·학점 등 등록된 표에서 직접 확인하는 답변\n"
+                "- **근거 부족:** 질문에 답할 자료가 부족해 추가 확인이 필요한 경우\n"
+                "- **호출·검증 실패:** API 오류가 발생하거나 LLM 답변이 근거 검증을 통과하지 못한 경우"
+            )
+            st.caption(
+                "위의 ‘답변 모드’는 사용 설정이고, 질문 후 표시되는 ‘현재 응답 모드’는 "
+                "해당 답변의 처리 방식입니다. 기본 답변이 나왔다는 이유만으로 연결 실패는 아닙니다."
+            )
 
     if not submitted:
         if indexed_chunk_count == 0:
@@ -326,7 +339,7 @@ def _render_search_page(
     if not question.strip():
         st.warning("검색할 질문을 입력해 주세요.")
         return
-    if indexed_chunk_count == 0:
+    if indexed_chunk_count == 0 and not {"검토된 학사규정", "학교 학사안내"}.intersection(document_types):
         empty_message = (
             NO_ACADEMIC_RULE_MESSAGE
             if classify_question_intent(question) is QuestionIntent.ACADEMIC_RULE
@@ -366,7 +379,11 @@ def _render_search_page(
     )
     st.sidebar.caption(f"현재 응답 모드: {actual_mode_label}")
     if llm_requested and answer.answer_mode is AnswerMode.DETERMINISTIC:
-        st.info("이번 답변은 기본 근거 기반 답변 모드로 제공됩니다.")
+        st.info(
+            "이번 답변은 기본 근거 기반 답변 모드로 제공됩니다. "
+            "검토된 규정이나 표 조회 등에서는 LLM이 연결되어 있어도 이 모드를 사용합니다. "
+            "자세한 조건은 왼쪽 ‘LLM 사용 안내’를 확인하세요."
+        )
     response = answer.search_response
     if response.results:
         with st.expander("검색 근거 보기"):
@@ -404,6 +421,8 @@ def main() -> None:
         settings.runtime_mode,
         settings.environment,
     )
+
+    st.page_link("pages/7_졸업로드맵.py", label="나의 졸업 로드맵 — 2020학번 심화·일반과정", icon="🧭")
 
     try:
         service = _get_search_service()

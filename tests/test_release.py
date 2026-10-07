@@ -179,6 +179,18 @@ def test_same_named_documents_keep_distinct_citations():
     assert len(deduplicate_answer_sources([sources[0], sources[0]])) == 1
 
 
+def test_same_named_retake_rules_keep_each_admission_scope():
+    from src.answering.answer_service import AnswerService
+    from src.retrieval.query_intent import QuestionIntent
+    evidence = [result(document_id=str(year), chunk_id=str(year),
+        text=f"{year}학년도 입학생에게 적용. 재수강 시 핵심교양은 교양선택으로 인정한다.")
+        for year in (2009, 2010)]
+    response = DocumentSearchResponse(results=evidence, question_intent=QuestionIntent.ACADEMIC_RULE)
+    answer = AnswerService.compose_answer("재수강 시 이수구분은 어떻게 처리해?", response)
+    assert len(answer.sources) == 2
+    assert "2009학년도" in answer.text and "2010학년도" in answer.text
+
+
 @pytest.mark.parametrize("claim", [
     {"quote": "장학금은 무조건 999만원 지급됩니다.", "evidence_id": "chunk-1"},
     {"quote": "장학금 신청 기간은 2026년 3월 1일부터 3월 10일까지입니다.", "evidence_id": "invented"},

@@ -58,10 +58,11 @@ def graduation_topic(question: str) -> str | None:
     the user's text or inferring their year, academic record, or program.
     """
     compact = _compact(question)
+    if guide_topic(question) in {"early_graduation", "degree_deferral"}:
+        return None
     # These concern events, employment, or a particular course, not degree
     # requirements. Never answer them with the reviewed graduation table.
-    # 조기졸업·학위취득유예는 대학 공통 학사안내(university_guide)에서 답한다.
-    if re.search(r"졸업식|졸업사진|졸업앨범|졸업여행|졸업후|졸업생취업|조기졸업|졸업유예|학위취득유예|학위유예", compact):
+    if re.search(r"졸업식|졸업사진|졸업앨범|졸업여행|졸업후|졸업생취업", compact):
         return None
     if re.search(r"졸업(논문|프로젝트|작품)", compact):
         return None
@@ -95,6 +96,30 @@ def is_graduation_question(question: str) -> bool:
     return graduation_topic(question) is not None
 
 
+def guide_topic(question: str) -> str | None:
+    """Recognize university-wide rules before department graduation tables."""
+    value = _compact(question)
+    if "조기졸업" in value:
+        return "early_graduation"
+    if re.search(r"학위취득유예|졸업유예|학위유예|졸업(을)?(미루|연기)", value):
+        return "degree_deferral"
+    if re.search(r"학사경고|성적경고", value):
+        return "academic_warning"
+    if "장학" in value or "졸업" in value:
+        return None
+    if "수료" in value and re.search(r"학점|조건|기준|몇|필요|하려면|되려면", value):
+        return "completion_credit"
+    if re.search(r"결석|출석미달|출석", value) and re.search(r"몇|f|성적|인정|기준|넘|이상|되면|하면", value):
+        return "attendance"
+    if "학점" in value and re.search(r"최대|까지|한학기|학기당|매학기|수강신청|신청가능|신청할수|들을수|초과", value) \
+            and not re.search(r"과목|교과목|학수번호|전공|msc|교양|설계", value):
+        return "credit_limit"
+    if re.search(r"평점|성적등급|등급|상대평가|절대평가|a\+|a0|b\+|d0", value) and \
+            re.search(r"몇|기준|어떻게|뭐|무엇|알려|비율|점수|이상|계산|평가", value):
+        return "grading_scale"
+    return None
+
+
 def classify_question_intent(question: str) -> QuestionIntent:
     """규정 강신호를 최우선으로 적용한 뒤 실제 과목 조회만 분류한다."""
 
@@ -102,7 +127,7 @@ def classify_question_intent(question: str) -> QuestionIntent:
     if not compact:
         return QuestionIntent.GENERAL_SEARCH
 
-    if is_graduation_question(question):
+    if guide_topic(question) is not None or is_graduation_question(question):
         return QuestionIntent.ACADEMIC_RULE
 
     if any(pattern.search(compact) for pattern in _ACADEMIC_RULE_PATTERNS):
@@ -123,7 +148,7 @@ def is_retake_completion_rule_question(question: str) -> bool:
     """재수강에 따른 이수구분 처리를 묻는 핵심 규정 질문인지 반환한다."""
 
     compact = _compact(question)
-    return "재수강" in compact and ("이수구분" in compact or "인정" in compact)
+    return "재수강" in compact and "이수구분" in compact
 
 
 def academic_rule_anchor_groups(question: str) -> tuple[tuple[str, ...], ...]:

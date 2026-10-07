@@ -28,6 +28,46 @@ _ONE_PIXEL_PNG = base64.b64decode(
 )
 
 
+@pytest.mark.parametrize("headers", [["학점", "학점", "학점_2"], ["학점_2", "학점", "학점"], ["", "column_1"]])
+def test_csv_header_collisions_preserve_every_value(corpus_root, headers):
+    path = corpus_root / "data/raw/tables/collision.csv"
+    values = [f"value-{i}" for i in range(len(headers))]
+    _write_table(path, headers, [values])
+    result = build_corpus(corpus_root)
+    row = result.documents[0]["metadata"]["row"]
+    assert len(row) == len(headers)
+    assert list(row.values()) == values
+    assert not result.report["errors"]
+
+
+@pytest.mark.parametrize("failure", ["text", "load"])
+def test_partial_pdf_failure_preserves_published_corpus(corpus_root, monkeypatch, failure):
+    from src.ingestion import pdf_extractor
+    path = corpus_root / "data/raw/pdfs/partial.pdf"
+    _create_text_pdf(path, ["Original first page", "Original second page"])
+    good = build_corpus(corpus_root)
+    previous = good.documents_path.read_bytes()
+    if failure == "text":
+        original = pdf_extractor._extract_page_text
+        def fail(page):
+            if page.number == 1:
+                raise RuntimeError("injected text failure")
+            return original(page)
+        monkeypatch.setattr(pdf_extractor, "_extract_page_text", fail)
+    else:
+        original = pymupdf.Document.load_page
+        def fail(doc, number):
+            if number == 1:
+                raise RuntimeError("injected page load failure")
+            return original(doc, number)
+        monkeypatch.setattr(pymupdf.Document, "load_page", fail)
+    failed = build_corpus(corpus_root)
+    assert failed.report["errors"]
+    assert good.documents_path.read_bytes() == previous
+    assert failed.documents_path.name == "documents.failed.jsonl"
+    assert any(issue.get("page_number") == 2 for issue in failed.report["errors"])
+
+
 @pytest.fixture
 def corpus_root(tmp_path: Path) -> Path:
     for relative_path in (
@@ -242,6 +282,7 @@ def test_all_curriculum_pdf_assigns_department_from_each_page_text(
         page_count=2,
         text_page_count=2,
         image_page_count=0,
+        failed_page_count=0,
         status=PdfDocumentStatus.SUCCESS,
         issues=[],
         pages=pages,

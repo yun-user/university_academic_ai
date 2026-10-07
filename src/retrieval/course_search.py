@@ -29,6 +29,7 @@ COURSE_DOCUMENT_TYPE = "학년별교과과정"
 _GRADE_PATTERN = re.compile(r"(?<!\d)([1-4])\s*학년")
 _SEMESTER_PATTERN = re.compile(r"(?<!\d)([12])\s*학기")
 _TOKEN_PATTERN = re.compile(r"[0-9A-Za-z가-힣]+")
+_IDENTIFIER_PATTERN = re.compile(r"학수번호\s*[:#]?\s*([A-Za-z0-9-]{4,})")
 _COMPLETION_TYPE_TERMS = (
     ("전공필수", ("전공필수",)),
     ("전공선택", ("전공선택",)),
@@ -50,7 +51,7 @@ class CourseQueryIntent:
 
     @property
     def has_structured_conditions(self) -> bool:
-        """학년·학기를 모두 추출했는지 반환한다. 이수구분은 선택 조건이다."""
+        """학년·학기 목록 조회 여부. 이수구분 생략 시 모든 구분을 조회한다."""
 
         return (
             self.is_course_query
@@ -91,6 +92,15 @@ def normalize_text(value: str) -> str:
     return " ".join(
         unicodedata.normalize("NFKC", value).casefold().split()
     )
+
+
+def requested_course_code(question: str) -> str | None:
+    match = _IDENTIFIER_PATTERN.search(unicodedata.normalize("NFKC", question))
+    return match.group(1).casefold() if match else None
+
+
+def has_course_code(semester: SemesterCourseInfo, code: str) -> bool:
+    return code.casefold() in re.findall(r"[a-z0-9-]+", semester.course_code.casefold())
 
 
 def parse_course_query(question: str) -> CourseQueryIntent:

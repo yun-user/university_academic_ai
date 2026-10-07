@@ -9,6 +9,18 @@ import pytest
 from src.config import ConfigurationError, clear_settings_cache, get_settings
 
 
+@pytest.mark.parametrize("name", ["DENSE_WEIGHT", "KEYWORD_WEIGHT", "CRAWL_DELAY_SECONDS"])
+@pytest.mark.parametrize("value", ["nan", "inf", "-inf"])
+def test_nonfinite_configuration_is_rejected(monkeypatch, name, value):
+    monkeypatch.setenv(name, value)
+    clear_settings_cache()
+    try:
+        with pytest.raises(ConfigurationError):
+            get_settings()
+    finally:
+        clear_settings_cache()
+
+
 def test_requested_retrieval_environment_variables_are_loaded(
     tmp_path: Path,
     monkeypatch,

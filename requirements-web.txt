@@ -1,0 +1,4 @@
+-r requirements-planner.txt
+fastapi==0.142.2
+uvicorn==0.52.4
+httpx==0.28.1

@@ -20,7 +20,7 @@ from uuid import NAMESPACE_URL, uuid5
 
 from src.config import PROJECT_ROOT
 from src.ingestion.pdf_extractor import extract_pdf_file
-from src.ingestion.pdf_models import PdfDocumentStatus, PdfPageStatus
+from src.ingestion.pdf_models import PdfDocumentStatus, PdfPageStatus, PdfIssueCode
 from src.logging_config import configure_logging, get_logger
 
 
@@ -571,7 +571,10 @@ def _process_pdf(
             )
         return []
 
-    report["success_files"] += 1
+    if extraction.failed_page_count:
+        report["failed_files"] += 1
+    else:
+        report["success_files"] += 1
     document_image_only = (
         extraction.text_page_count == 0
         and extraction.image_page_count > 0
@@ -587,7 +590,8 @@ def _process_pdf(
     for issue in extraction.issues:
         _add_issue(
             report,
-            "warnings",
+            "errors" if issue.code in {PdfIssueCode.PAGE_EXTRACTION_FAILED,
+                                      PdfIssueCode.PAGE_CLASSIFICATION_FAILED} else "warnings",
             code=f"PDF_{issue.code.value.upper()}",
             message=issue.message,
             file_name=path.name,
@@ -663,13 +667,17 @@ def _unique_headers(
     report: dict[str, Any],
 ) -> list[str]:
     headers: list[str] = []
-    occurrences: dict[str, int] = {}
+    used: set[str] = set()
+    # Keep existing explicit names intact when generating suffixes.
+    reserved = {header.strip() for header in raw_headers if header.strip()}
     for column_index, raw_header in enumerate(raw_headers, start=1):
         header = raw_header.strip() or f"column_{column_index}"
-        count = occurrences.get(header, 0) + 1
-        occurrences[header] = count
-        if count > 1:
+        if header in used or (not raw_header.strip() and header in reserved):
+            count = 2
             unique_header = f"{header}_{count}"
+            while unique_header in used or unique_header in reserved:
+                count += 1
+                unique_header = f"{header}_{count}"
             _add_issue(
                 report,
                 "warnings",
@@ -679,6 +687,7 @@ def _unique_headers(
             )
             header = unique_header
         headers.append(header)
+        used.add(header)
     return headers
 
 

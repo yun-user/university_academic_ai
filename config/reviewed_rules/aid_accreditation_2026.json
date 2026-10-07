@@ -1,0 +1,21 @@
+{
+  "reviewed_on": "2026-10-05",
+  "source": {
+    "file": "aid_accreditation_2026.pdf",
+    "sha256": "f3ad1d91b39d441675a0892d165ba47b65cbc0b4f04cfecc361018cedbc698a4",
+    "url": "https://archien.hongik.ac.kr/archien/0402.do?articleNo=149705&mode=view",
+    "download_url": "https://archien.hongik.ac.kr/archien/0402.do?mode=download&articleNo=149705&attachNo=87035",
+    "title": "AID융합과학기술대학 공학교육인증과정 이수내규 (2026.03.01 개편)",
+    "pages": 7,
+    "review_method": "스캔 원문 7쪽을 렌더링하여 직접 대조. 건축공학전공 자체 내규가 아닌 대학 공통 내규."
+  },
+  "scope": "제3조 심화과정 소속 학생. 제6조 표에 소프트웨어융합학과 포함. 부칙 23: 2026-03-01 시행. 일반과정 졸업학점표를 대체하지 않음.",
+  "reviewed_clauses": [
+    {"page": 1, "article": "제5조", "summary": "2016년 신입생부터 단일인증 적용. 인증 포기는 열거한 예외 또는 프로그램 운영위원회 승인에 따라 처리하며 제출·승인이 필요. 일반과정 기준 선택만으로 실제 과정 변경이 성립하지 않음."},
+    {"page": 3, "article": "제8조", "summary": "2016년 이후 심화 입학생: 전문교양23, 전공기초영어2, MSC30, 전공54, 총132, 교양인정상한40. 사이버강좌·서울캠퍼스 개설강좌의 전문교양·MSC 인정은 원칙적으로 제외, 운영위원회 승인 예외."},
+    {"page": 3, "article": "제9조·제10조", "summary": "기초교양6, 4·5영역 포함 7영역 중 6영역. MSC는 과학 실험 포함1set, 수학1과목, 전산1과목 이상; 학과별 내규를 함께 적용."},
+    {"page": 4, "article": "제11조", "summary": "공인시험 기준: TOEIC600, TEPS482, New TEPS227, TOEFL iBT69, TOEIC Speaking110, OPIc IM1, TEPS Speaking43, HSK4급210, JPT600. 점수 개정 가능성·유효기간 내 제출·예외 승인 별도 확인. 2014 입학생부터 전공기초영어 I/II 중1과목."},
+    {"page": 4, "article": "제12조·제13조", "summary": "기초(입문)설계→요소설계→종합설계 순서 이수; 운영위원회 승인 예외. 소프트웨어융합공학심화 설계 최소12학점. 프로그램 이수체계 준수."},
+    {"page": 5, "article": "제20조", "summary": "설계학점은 학생의 수강 당시 설정된 학점에 따름."}
+  ]
+}

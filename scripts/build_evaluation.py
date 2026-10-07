@@ -1,6 +1,7 @@
 """Reproducible 120-case regression set; generated cases are not a human benchmark."""
 import csv
 import json
+import re
 from src.config import PROJECT_ROOT
 
 
@@ -12,9 +13,12 @@ def main():
     for index, row in enumerate(courses):
         group = f"course-{index+1:03}"
         split = "test" if index % 3 == 0 else "dev"
-        codes = row["1학기_학수번호"] or row["2학기_학수번호"]
-        code = codes.split(",")[0].strip()
-        questions = [row["교과목명"] + " 교과목 정보", f"학수번호 {code} 교과목 정보"]
+        codes = [code.strip() for semester in (1, 2)
+                 for code in row[f"{semester}학기_학수번호"].split(",")]
+        code = next((value for value in codes if re.fullmatch(r"[A-Za-z0-9-]{4,}", value)), None)
+        questions = [row["교과목명"] + " 교과목 정보"]
+        if code:
+            questions.append(f"학수번호 {code} 교과목 정보")
         for variant, question in enumerate(questions, 1):
             cases.append({"id": f"{group}-{variant}", "group": group, "split": split,
                 "question": question, "department": "소프트웨어융합학과",

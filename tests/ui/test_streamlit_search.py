@@ -491,7 +491,7 @@ def test_no_related_document_shows_standard_message() -> None:
         "현재 등록된 자료에서는 질문에 대한 정확한 근거를 찾지 못했습니다."
         in _visible_text(app)
     )
-    assert app.expander == []
+    assert [item.label for item in app.expander] == ["LLM 사용 안내"]
 
 
 def test_empty_index_does_not_call_search_service() -> None:
@@ -506,4 +506,27 @@ def test_empty_index_does_not_call_search_service() -> None:
         "현재 등록된 자료에서 정확한 규정을 찾지 못했습니다."
         in _visible_text(app)
     )
-    assert app.expander == []
+    assert [item.label for item in app.expander] == ["LLM 사용 안내"]
+
+
+def _guide_without_index_app():
+    from app import _render_search_page
+    from src.config import PROJECT_ROOT
+    from src.retrieval.university_guide import university_guide_search
+    class GuideService:
+        indexed_chunk_count = 0
+        def available_departments(self):
+            return []
+        def available_document_types(self):
+            return ["학교 학사안내"]
+        def search_with_context(self, question, **filters):
+            return university_guide_search(question, PROJECT_ROOT, filters.get("document_type"))
+    _render_search_page(GuideService(), app_name="학사안내 테스트")
+
+
+def test_reviewed_guide_can_answer_without_vector_index():
+    app = AppTest.from_function(_guide_without_index_app).run()
+    app.text_input[0].set_value("조기졸업 조건이 뭐야?")
+    app.button[0].click().run()
+    assert not app.exception
+    assert "A0(4.00)" in _visible_text(app)

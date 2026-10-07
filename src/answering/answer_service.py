@@ -23,6 +23,8 @@ from src.retrieval.course_search import (
     parse_course_query,
     parse_key_value_text,
     truncate_text,
+    requested_course_code,
+    has_course_code,
 )
 from src.retrieval.document_models import (
     DocumentSearchResponse,
@@ -50,31 +52,6 @@ UNKNOWN_RULE_SCOPE_MESSAGE = (
 ACADEMIC_RULE_CONFLICT_NOTICE = "자료별 적용 기준이 다릅니다."
 _EXCERPT_LIMIT = 360
 _SENTENCE_BOUNDARY = re.compile(r"(?<=[.!?。])\s+|\n+")
-_QUESTION_TOKEN = re.compile(r"[0-9A-Za-z가-힣]{2,}")
-
-
-def _word_stem(word: str) -> str:
-    """조사·어미·'하다/되다' 접미사 앞까지만 남긴다. 예: 선발해 → 선발."""
-
-    from src.retrieval.keyword_search import _kiwi
-
-    for token in _kiwi().tokenize(word):
-        if token.tag.startswith(("J", "E")) or token.tag in {"XSV", "XSA", "VCP"}:
-            return word[: token.start]
-    return word
-
-
-def _has_lexical_support(question: str, text: str) -> bool:
-    """질문 어절이나 그 어간 중 하나라도 근거 원문에 있는지 확인한다."""
-
-    content = normalize_text(text).replace(" ", "")
-    for word in _QUESTION_TOKEN.findall(normalize_text(question)):
-        if word in content:
-            return True
-        stem = _word_stem(word)
-        if len(stem) >= 2 and stem in content:
-            return True
-    return False
 
 
 class SearchService(Protocol):
@@ -144,19 +121,6 @@ class AnswerService:
     ) -> AnswerResponse:
         """이미 검색된 결과를 재검색 없이 결정적으로 답변으로 바꾼다."""
 
-        answer = cls._compose(question, response)
-        if response.scope_notice and answer.status is AnswerStatus.ANSWERED:
-            answer = answer.model_copy(
-                update={"text": f"{response.scope_notice}\n\n{answer.text}"}
-            )
-        return answer
-
-    @classmethod
-    def _compose(
-        cls,
-        question: str,
-        response: DocumentSearchResponse,
-    ) -> AnswerResponse:
         normalized_question = question.strip()
         if not normalized_question:
             raise ValueError("답변할 질문은 비워 둘 수 없습니다.")
@@ -248,16 +212,6 @@ class AnswerService:
                 response,
                 primary,
             )
-        if not _has_lexical_support(normalized_question, primary.text):
-            # 의미 검색 점수만 넘고 질문 단어가 하나도 없는 문단을 답으로
-            # 내보내지 않는다. 예: "졸업식 언제야?" → 내규의 "제5조 (강의 배정)".
-            return AnswerResponse(
-                question=normalized_question,
-                status=AnswerStatus.INSUFFICIENT_EVIDENCE,
-                answer_format=AnswerFormat.NONE,
-                text=NO_EVIDENCE_MESSAGE,
-                search_response=response,
-            )
         if primary.file_type == "pdf":
             return cls._document_answer(
                 normalized_question,
@@ -298,8 +252,8 @@ class AnswerService:
             completion = "·".join(intent.completion_types)
             heading = (
                 f"{first_result.department} {intent.grade}학년 "
-                f"{intent.semester}학기 {completion + ' ' if completion else ''}"
-                f"과목은 총 {len(courses)}개입니다."
+                f"{intent.semester}학기 {completion + ' ' if completion else ''}과목은 "
+                f"총 {len(courses)}개입니다."
             )
         else:
             heading = (
@@ -317,7 +271,7 @@ class AnswerService:
             lines = ["**자료별 교과목 정보가 다릅니다.** 같은 과목명의 학점·학수번호·이수 조건이 달라 자료별로 표시합니다. 본인에게 적용되는 교육과정 연도를 확인하세요.", ""]
         sources: list[AnswerSource] = []
         for index, (result, course) in enumerate(courses, start=1):
-            semester = cls._answer_semester(course, intent.semester)
+            semester = cls._answer_semester(course, intent.semester, requested_course_code(question))
             if has_conflict:
                 lines.append(f"자료: {result.file_name} · 기준연도 {result.source_year or '미지정'} · CSV {result.row_number}행")
             lines.extend(
@@ -355,6 +309,7 @@ class AnswerService:
     def _answer_semester(
         course: CourseInfo,
         requested_semester: int | None,
+        requested_code: str | None = None,
     ) -> SemesterCourseInfo:
         available = [item for item in course.semesters if item.is_available]
         if requested_semester is not None:
@@ -369,6 +324,10 @@ class AnswerService:
             if requested is not None:
                 return requested
             return SemesterCourseInfo(semester=requested_semester)
+        if requested_code:
+            matching = next((item for item in available if has_course_code(item, requested_code)), None)
+            if matching is not None:
+                return matching
         if available:
             with_real_code = [item for item in available if item.course_code and item.course_code != '부학기']
             if with_real_code:
@@ -635,18 +594,18 @@ class AnswerService:
 
         grouped_conditional: list[
             tuple[
-                tuple[str, int | None],
+                tuple[str, str, int | None],
                 DocumentSearchResult,
                 list[str],
                 list[str],
             ]
         ] = []
         grouped_by_location: dict[
-            tuple[str, int | None],
+            tuple[str, str, int | None],
             tuple[DocumentSearchResult, list[str], list[str]],
         ] = {}
         for _signature, label, result in conditional_facts:
-            key = (result.file_name, result.page_number)
+            key = (result.document_id, result.file_name, result.page_number)
             if key not in grouped_by_location:
                 grouped_by_location[key] = (
                     result,
@@ -726,9 +685,9 @@ class AnswerService:
         facts: Sequence[tuple[str, str, DocumentSearchResult]],
     ) -> list[tuple[str, str, DocumentSearchResult]]:
         unique: list[tuple[str, str, DocumentSearchResult]] = []
-        seen: set[tuple[str, str, int | None]] = set()
+        seen: set[tuple[str, str, str, int | None]] = set()
         for signature, label, result in facts:
-            key = (signature, result.file_name, result.page_number)
+            key = (signature, result.document_id, result.file_name, result.page_number)
             if key in seen:
                 continue
             seen.add(key)

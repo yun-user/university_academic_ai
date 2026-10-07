@@ -1,0 +1,8 @@
+# Standalone planner; no embeddings or OCR. OpenAI is optional at runtime.
+streamlit>=1.60,<2
+pydantic>=2.13,<3
+pandas>=2.2,<4
+python-dotenv>=1.2,<2
+tzdata>=2025.2
+openai>=2.0,<3
+playwright>=1.55,<2
