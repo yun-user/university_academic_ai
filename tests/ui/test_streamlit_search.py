@@ -341,7 +341,14 @@ def _empty_index_app():
             return []
 
         def search_with_context(self, question, **filters):
-            raise AssertionError("빈 색인에서는 검색을 호출하면 안 됩니다.")
+            # 실제 서비스처럼 검토 규정만 확인하고, 색인이 비면 빈 결과를 돌려준다.
+            from pathlib import Path
+            from src.retrieval.document_models import DocumentSearchResponse
+            from src.retrieval.reviewed_rules import reviewed_rule_search
+            import src
+            root = Path(src.__file__).resolve().parents[1]
+            return (reviewed_rule_search(question, "소프트웨어융합학과", root)
+                    or DocumentSearchResponse())
 
     _render_search_page(
         EmptyIndexService(),
@@ -494,8 +501,9 @@ def test_no_related_document_shows_standard_message() -> None:
     assert [item.label for item in app.expander] == ["LLM 사용 안내"]
 
 
-def test_empty_index_does_not_call_search_service() -> None:
+def test_empty_index_explains_setup_and_returns_no_evidence() -> None:
     app = AppTest.from_function(_empty_index_app).run()
+    assert any("setup.cmd" in info.value for info in app.info)
     app.text_input[0].set_value("장학금 기준")
     app = app.button[0].click().run()
 
@@ -530,3 +538,13 @@ def test_reviewed_guide_can_answer_without_vector_index():
     app.button[0].click().run()
     assert not app.exception
     assert "A0(4.00)" in _visible_text(app)
+
+
+def test_empty_index_still_answers_reviewed_graduation_rules() -> None:
+    # 새로 받은 저장소에서 색인을 만들기 전에도 검토된 졸업요건은 답한다.
+    app = AppTest.from_function(_empty_index_app).run()
+    app.text_input[0].set_value("소프트웨어융합학과 졸업요건이 뭐야?")
+    app = app.button[0].click().run()
+
+    assert app.exception == []
+    assert "54학점 이상" in _visible_text(app)

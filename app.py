@@ -20,10 +20,7 @@ from src.answering import (
     build_answer_service,
     deduplicate_answer_sources,
 )
-from src.answering.answer_service import (
-    NO_ACADEMIC_RULE_MESSAGE,
-    OUTDATED_ANSWER_WARNING,
-)
+from src.answering.answer_service import OUTDATED_ANSWER_WARNING
 from src.config import ConfigurationError, get_settings
 from src.logging_config import configure_logging, get_logger
 from src.retrieval.course_search import (
@@ -44,15 +41,16 @@ from src.retrieval.document_search_service import (
 )
 from src.retrieval.document_vector_store import DocumentVectorStoreError
 from src.retrieval.embeddings import EmbeddingError
-from src.retrieval.query_intent import (
-    QuestionIntent,
-    classify_question_intent,
-)
 
 
 DISCLAIMER = "본 서비스의 답변은 참고용이며, 공식 학사 행정 답변을 대신하지 않습니다."
 NO_RESULTS_MESSAGE = (
     "현재 등록된 자료에서는 질문에 대한 정확한 근거를 찾지 못했습니다."
+)
+EMPTY_INDEX_MESSAGE = (
+    "검색 색인이 아직 없습니다. 프로젝트 폴더에서 setup.cmd를 실행하거나 "
+    "`python -m scripts.prepare`로 색인을 만든 뒤 앱을 다시 시작하세요. "
+    "그 전에도 검토된 졸업요건·학교 학사안내 질문에는 답합니다."
 )
 
 
@@ -329,23 +327,13 @@ def _render_search_page(
                 "해당 답변의 처리 방식입니다. 기본 답변이 나왔다는 이유만으로 연결 실패는 아닙니다."
             )
 
+    if indexed_chunk_count == 0:
+        # 검토된 졸업요건·학교 학사안내는 색인 없이도 답하므로 질문은 계속 받는다.
+        st.info(EMPTY_INDEX_MESSAGE)
     if not submitted:
-        if indexed_chunk_count == 0:
-            st.info(
-                "현재 등록된 검색 문서가 없습니다. "
-                "documents.jsonl 통합 색인을 먼저 생성해 주세요."
-            )
         return
     if not question.strip():
         st.warning("검색할 질문을 입력해 주세요.")
-        return
-    if indexed_chunk_count == 0 and not {"검토된 학사규정", "학교 학사안내"}.intersection(document_types):
-        empty_message = (
-            NO_ACADEMIC_RULE_MESSAGE
-            if classify_question_intent(question) is QuestionIntent.ACADEMIC_RULE
-            else NO_RESULTS_MESSAGE
-        )
-        _render_answer(empty_message)
         return
 
     try:

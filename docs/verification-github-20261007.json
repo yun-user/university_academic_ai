@@ -1,0 +1,45 @@
+{
+  "verified_on": "2026-10-07",
+  "scope": "Local implementation checks after integrating the existing GitHub change. Not official graduation approval, actual student accuracy, or a fresh installation on another PC.",
+  "integrated_remote_commit": "b4647cf672846cf67a354904a5dcc5587bde1ba3",
+  "full_python_suite": {
+    "passed": 482,
+    "warnings": 2,
+    "seconds": 32.78,
+    "command": ".venv/Scripts/python.exe -m pytest -q --basetemp=tmp/planner_review/pytest-github-final -o cache_dir=tmp/planner_review/cache-github-final"
+  },
+  "frontend": {
+    "command": "npm.cmd run build",
+    "typecheck": "passed",
+    "production_build": "passed"
+  },
+  "synthetic_scenarios": {
+    "command": ".venv/Scripts/python.exe -m scripts.evaluate_planner",
+    "passed": 14,
+    "total": 14,
+    "actual_student_accuracy": null
+  },
+  "previous_same_day_package_check": {
+    "passed": 178,
+    "seconds": 18.77,
+    "environment": "Separate extracted folder on the same Windows PC using the existing virtualenv"
+  },
+  "privacy_scan": {
+    "scope": "Tracked source files, configured credential values and common token patterns; ignored data folders excluded",
+    "private_database_or_environment_files": 0,
+    "configured_credential_matches": 0,
+    "token_pattern_matches": 0
+  },
+  "readme": {
+    "local_links": "checked",
+    "preview": "Synthetic example; no actual student data",
+    "coverage": ["setup", "features", "architecture", "LLM configuration", "optional accounts", "verification", "remaining school confirmation"]
+  },
+  "remaining_external_validation": [
+    "2020 general-track final criteria and latest departmental rules",
+    "Official substitutions, permitted MSC courses and design credits by course year",
+    "Deidentified comparison with actual school graduation audits",
+    "Human usability and LLM quality evaluation",
+    "Professor rubric and fresh installation on another PC"
+  ]
+}
