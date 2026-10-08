@@ -4,8 +4,9 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import asdict, dataclass
 
-from src.planning.models import Attempt, PASS_GRADES, Profile
+from src.planning.models import Attempt, MAJOR_CATEGORIES, PASS_GRADES, Profile
 from src.planning.rules import RuleSet
+from src.planning.classification import is_english_bonus
 
 
 @dataclass
@@ -80,13 +81,24 @@ def audit(attempts: list[Attempt], profile: Profile, rules: RuleSet, *, equivale
         else:
             counted.append(rows[0])
     totals = defaultdict(float)
+    # English-medium bonus credits are independent of the original course,
+    # even when that course was retaken. Only explicitly recorded awards count.
+    bonus = sum(a.credits for a in counted if is_english_bonus(a))
+    bonus_excess = max(0, bonus - 5)
+    if bonus:
+        warnings.append(f"영어전용강좌 추가학점 {bonus:g}학점: 일반선택으로 합산하며 전공·전문교양·전공기초영어에는 포함하지 않습니다. 학교 FAQ 기준 합계 최대 5학점입니다.")
     for a in counted:
-        totals[a.category] += a.credits
-        totals["설계 인정학점"] += a.design_credits
-        totals["SW·데이터활용"] += a.sw_data_credits
+        category = "일반선택" if is_english_bonus(a) else ("전공" if a.category in MAJOR_CATEGORIES else a.category)
+        totals[category] += a.credits
+        if not is_english_bonus(a):
+            totals["설계 인정학점"] += a.design_credits
+            totals["SW·데이터활용"] += a.sw_data_credits
     liberal = sum(totals[k] for k in ("전문교양", "교양선택", "특성화교양"))
     excess = max(0, liberal - rules.liberal_cap)
-    totals["총 졸업인정학점"] = sum(a.credits for a in counted) - excess
+    totals["일반선택"] -= bonus_excess
+    totals["총 졸업인정학점"] = sum(a.credits for a in counted) - excess - bonus_excess
+    if bonus_excess:
+        warnings.append(f"영어 추가학점 상한 초과 {bonus_excess:g}학점은 총 졸업인정학점에서 제외했습니다. 중복 입력과 학교 부여 내역을 확인하세요.")
     if rules.msc_computing_cap is not None:
         over = max(0, totals["MSC전산"] - rules.msc_computing_cap)
         if over:
@@ -129,8 +141,8 @@ def audit(attempts: list[Attempt], profile: Profile, rules: RuleSet, *, equivale
         checks.append(Check(key, int(ok), 1, "충족" if ok else "미충족", detail))
 
     group("기초교양: 글쓰기", {"001012", "001020"}, "논리적사고와글쓰기(공학) 또는 공학글쓰기. 다른 대체과목은 동일과목 코드 확인 필요")
-    group("기초교양: 영어", {"001009"}, "영어 또는 공식적으로 인정된 동일과목")
-    areas = {a.area for a in counted if a.category == "전문교양" and a.area}
+    group("기초교양: 영어", {"001009", "001023"}, "영어(001009) 또는 명칭 변경된 대학영어(001023). 교양영어 추가학점은 별개")
+    areas = {a.area for a in counted if a.category == "전문교양" and a.area and not is_english_bonus(a)}
     checks.append(Check("교양 6개 영역", len(areas), 6, "충족" if len(areas) >= 6 else "미충족", "7개 영역 중 6개 이상, 4·5영역은 별도로 필수"))
     for area in (4, 5):
         checks.append(Check(f"교양 {area}영역", int(area in areas), 1,

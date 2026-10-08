@@ -6,9 +6,25 @@ from src.planning.io import COLUMNS, parse_rows, to_rows
 from src.planning.models import CATEGORIES, STATUSES
 from src.planning.portal import PortalError, PortalSession, local_portal_enabled
 from src.planning.portal_import import parse_portal_tables, parse_portal_text
+from src.planning.classification import classify_import
+from src.planning.models import Profile
+from src.config import PROJECT_ROOT
 
 
-def _browser_connection(catalog):
+def _review_import(result, profile):
+    if result.ready:
+        result.attempts, review = classify_import(result.attempts, profile, PROJECT_ROOT)
+        for index, row in enumerate(result.reviews):
+            row.update(to_rows([result.attempts[index]])[0])
+            row["분류 근거"] = review["suggestions"][index]["reason"]
+        result.warnings = [w for w in result.warnings if "2026 교과과정" not in w and "‘미확인’" not in w]
+        result.warnings += review["notes"][:3]
+        if any(a.category == "미확인" for a in result.attempts):
+            result.warnings.append("미확인 과목은 합계에서 제외됩니다. 학수번호·이수구분을 확인하세요.")
+    return result
+
+
+def _browser_connection(catalog, profile):
     with st.expander("별도 Chrome / Edge 연결 (접속 불안정)", expanded=False):
         st.warning("별도 창에서는 학교 로그인 새로고침이 반복되는 현상이 확인되었습니다. 이 경우 연결을 종료하고 Codex 내부 브라우저의 성적표를 아래에 붙여넣으세요.")
         st.caption("이 PC에서 start_planner.cmd로 실행할 때 사용할 수 있습니다. 별도 브라우저 창에서 학교 아이디와 비밀번호를 입력하세요. 프로그램은 비밀번호를 입력받거나 로그인 쿠키를 저장하지 않습니다. 가져오기 성공 후 창이 닫히며, 사용하지 않으면 10분 뒤 연결이 종료됩니다.")
@@ -34,7 +50,7 @@ def _browser_connection(catalog):
             st.session_state.pop("planner_portal_preview", None)
             try:
                 with st.spinner("학교 전체성적조회를 읽고 과목을 대조합니다…"):
-                    imported = parse_portal_tables(session.read(), catalog)
+                    imported = _review_import(parse_portal_tables(session.read(), catalog), profile)
             except PortalError as exc:
                 st.error(str(exc))
             else:
@@ -50,7 +66,8 @@ def _browser_connection(catalog):
             st.info(f"별도로 열린 {browser_name} 창에서 학교에 로그인하세요. 클래스넷 → 성적정보 → 전체성적조회를 연 다음 ‘로그인 후 성적 가져오기’를 누르세요.")
 
 
-def controls(catalog, replace_rows):
+def controls(catalog, replace_rows, profile=None):
+    profile = profile or Profile()
     with st.expander("학교에서 이수내역 가져오기", expanded=False):
         st.write("**Codex 내부 브라우저에서 성적표 가져오기**")
         st.caption("Codex 내부 브라우저 등에서 전체성적조회 내용을 첫 학기 제목부터 마지막 학기까지 한 번에 복사해 붙여넣으세요. 학수번호를 하나씩 입력할 필요가 없습니다. 원문은 변환 후 입력창에서 지우고, 아래 미리보기에서 확인합니다.")
@@ -58,10 +75,10 @@ def controls(catalog, replace_rows):
             copied = st.text_area("전체성적조회 내용 붙여넣기", height=140, max_chars=500000,
                                   key="planner_portal_paste")
             if st.form_submit_button("붙여넣은 성적표 확인"):
-                st.session_state.planner_portal_preview = parse_portal_text(copied, catalog)
+                st.session_state.planner_portal_preview = _review_import(parse_portal_text(copied, catalog), profile)
                 st.session_state.planner_portal_revision = st.session_state.get("planner_portal_revision", 0) + 1
                 st.rerun()
-        _browser_connection(catalog)
+        _browser_connection(catalog, profile)
         imported = st.session_state.get("planner_portal_preview")
         if imported is None:
             return

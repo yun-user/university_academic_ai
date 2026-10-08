@@ -22,13 +22,16 @@ def package(root: Path, output: Path, *, include_web=False):
     paths += ["config/reviewed_rules/sources/"+s["file"] for s in department["sources"]]
     program = json.loads((root/"config/reviewed_rules/software_program_review.json").read_text(encoding="utf-8"))
     paths += ["config/reviewed_rules/sources/"+s["file"] for s in program["sources"]]
+    classification = json.loads((root/"config/reviewed_rules/course_classification.json").read_text(encoding="utf-8"))
+    paths += ["config/reviewed_rules/sources/"+s["file"] for s in classification["sources"]]
     design = json.loads((root/"config/reviewed_rules/design_courses.json").read_text(encoding="utf-8"))
     paths.append("config/reviewed_rules/sources/"+design["source_file"])
     # Only these maintained docs/tests and synthetic outputs are distributable.
     paths += ["docs/"+n for n in ["졸업로드맵_실행및시연.md","졸업로드맵_설계와검증보고서.md",
-                                  "졸업로드맵_규정확인과_검증.md","졸업로드맵_개발계획.md","졸업로드맵_학교연동.md","졸업로드맵_학번선택과검증.md"]]
+                                  "졸업로드맵_규정확인과_검증.md","졸업로드맵_개발계획.md","졸업로드맵_학교연동.md","졸업로드맵_학번선택과검증.md","졸업로드맵_이수구분과영어추가학점.md"]]
     paths += ["tests/unit/"+n for n in ["test_planning.py","test_planning_substitutions.py","test_planning_workspace.py","test_planning_llm.py"]]
-    paths += ["tests/unit/test_planning_portal.py", "tests/ui/test_planner_page.py", "tests/ui/test_planner_portal.py"]
+    paths += ["tests/unit/test_planning_portal.py", "tests/unit/test_course_classification.py", "tests/ui/test_planner_page.py", "tests/ui/test_planner_portal.py"]
+    paths += ["docs/images/path-classification-20261008.jpg"]
     if include_web:
         paths += ["requirements-web.txt", "setup_web.cmd", "start_web.cmd",
                   "docs/졸업로드맵_웹앱구조와시연.md", "docs/졸업로드맵_최종보강과검증.md",

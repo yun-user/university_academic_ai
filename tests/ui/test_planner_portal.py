@@ -46,3 +46,7 @@ def test_pasted_transcript_is_previewed_before_replacing():
     assert not app.exception and not app.session_state["planner_rows"]
     assert app.session_state["planner_portal_preview"].ready
     assert next(b for b in app.button if b.label == "가져온 이수내역 적용").disabled
+    app.selectbox(key="planner_admission_year").select(2018).run()
+    assert not app.exception
+    assert "planner_portal_preview" not in app.session_state
+    assert not any(b.label == "가져온 이수내역 적용" for b in app.button)

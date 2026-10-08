@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { api } from "./api";
 import CourseEditor from "./CourseEditor";
+import ClassificationReview from "./ClassificationReview";
 import CohortSummary from "./CohortSummary";
 import {
   PlanControls,
@@ -202,6 +203,8 @@ export default function App() {
   }
   async function changeScope(admission_year: number, track: Profile["track"]) {
     if (!data) return;
+    setImported(null);
+    setImportConfirmed(false);
     const profile = {
       ...data.profile,
       admission_year,
@@ -348,7 +351,7 @@ export default function App() {
   }
   async function importText(kind: string, text: string) {
     await work("성적표를 읽고 있어요…", async () => {
-      setImported(await api(`/import/${kind}`, "POST", { text }));
+      setImported(await api(`/import/${kind}`, "POST", { text, profile: data?.profile }));
       setImportConfirmed(false);
       setPaste("");
     });
@@ -1033,6 +1036,12 @@ export default function App() {
                     미확인 과목과 인정할 내역이 정해지지 않은 중복·재수강은 학점
                     합산에서 보류합니다.
                   </p>
+                  <ClassificationReview
+                    rows={data.attempts}
+                    profile={data.profile}
+                    onChange={(attempts) => change({ attempts })}
+                    work={work}
+                  />
                   <CourseEditor
                     rows={data.attempts}
                     config={config}

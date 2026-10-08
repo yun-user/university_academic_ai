@@ -95,6 +95,12 @@ class SaveProfile(PlanningInput):
 
 class TranscriptText(StrictModel):
     text: str = Field(min_length=1, max_length=1_000_000)
+    profile: Profile = Field(default_factory=Profile)
+
+
+class ClassificationRequest(StrictModel):
+    attempts: list[Attempt] = Field(max_length=500)
+    profile: Profile
 
 
 class ChatTurn(StrictModel):

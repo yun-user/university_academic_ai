@@ -60,6 +60,8 @@ def check_table(result):
 
 
 def scope_changed():
+    # Import suggestions were classified for the previous cohort/track.
+    st.session_state.pop("planner_portal_preview", None)
     for name in ("thesis", "english", "general_approval", "design_sequence", "recognized_course_scope", "specialized_course", "basic_english_course", "sw_data_course", "science_course"):
         st.session_state["planner_" + name] = "확인 필요"
     st.session_state.planner_required_list_checked = False
@@ -94,7 +96,7 @@ with st.expander("적용 기준과 출처", expanded=False):
                        "accreditation-rules-2026.pdf", "application/pdf")
 
 st.subheader("1. 이수내역 입력")
-portal_controls(catalog, replace_rows)
+portal_controls(catalog, replace_rows, Profile(admission_year=admission_year, track=track))
 buttons = st.columns(3)
 if buttons[0].button("가상 예제로 시작"):
     replace_rows(to_rows(sample_transcript(admission_year)))

@@ -85,7 +85,10 @@ def make_context(attempts, profile, rules, candidates, options, goal, baseline):
         "candidates": [c.model_dump(exclude={"source"}) for c in available],
         "baseline_plan": [{"year": s.year, "term": s.term, "codes": [c.code for c in s.courses]}
                           for s in baseline.semesters],
-        "limitations": list(rules.notices) + baseline.assumptions,
+        "limitations": list(rules.notices) + baseline.assumptions + [
+            "전공필수·전공선택·기존 전공 구분은 전공 합계에 합산하며 전공필수 표시만으로 개인 필수목록을 확정하지 않는다.",
+            "교양영어(n)·전공영어(n)의 1학점은 영어전용강좌 추가 인정학점이다. 일반선택으로 총 최대 5학점, 실제 부여된 행만 계산한다. 원래 영어(001009)/대학영어(001023) 및 전공기초영어(007114/007115)와 별개이며 대체 이수로 해석하지 않는다.",
+        ],
     }
 
 

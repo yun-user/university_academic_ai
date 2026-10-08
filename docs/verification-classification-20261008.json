@@ -1,0 +1,71 @@
+{
+  "verified_on": "2026-10-08",
+  "scope": "Implementation checks, not official graduation approval or measured student accuracy",
+  "reviewed_classification_entries": 124,
+  "verified_public_source_files": 6,
+  "full_python_suite": {
+    "passed": 542,
+    "warnings": 2,
+    "seconds": 44.4
+  },
+  "post_test_split_checks": {
+    "passed": 53,
+    "warnings": 2,
+    "seconds": 8.91
+  },
+  "cohort_preview_invalidation_ui_tests": {
+    "passed": 3,
+    "seconds": 2.18
+  },
+  "frontend": {
+    "typecheck": "passed",
+    "production_build": "passed"
+  },
+  "synthetic_scenarios": {
+    "passed": 32,
+    "total": 32
+  },
+  "unpacked_package_tests": {
+    "passed": 238,
+    "warnings": 2,
+    "seconds": 26.6,
+    "environment": "Separate directory on the same Windows PC using the existing virtualenv",
+    "final_non_markdown_files_identical_to_tested": 93
+  },
+  "browser": {
+    "synthetic_portal_import_rows": 4,
+    "classification_preview": "passed",
+    "apply_undo_reapply": "passed",
+    "save_reload_restore": "passed",
+    "non_classification_fields_preserved": true,
+    "original_copy_preserved": true,
+    "mobile_width": 390,
+    "horizontal_document_overflow": false,
+    "table_internal_horizontal_scroll": true,
+    "console_errors": 0,
+    "synthetic_screenshot": "images/path-classification-20261008.jpg"
+  },
+  "llm": {
+    "actual_student_data_sent": false,
+    "validation": "Mock provider tests and context assertions"
+  },
+  "privacy_scan": {
+    "staged_files_scanned": 244,
+    "configured_credential_matches": 0,
+    "token_pattern_matches": 0,
+    "private_database_or_environment_files": 0
+  },
+  "package": {
+    "file": "graduation-roadmap-classification-20261008.zip",
+    "files": 105,
+    "bytes": 9858325,
+    "sha256": "91663415e3f8877bedb950611d29150b18885fe8f15a632e8f9946cfcea554d6",
+    "manifest": "passed"
+  },
+  "remaining_external_validation": [
+    "Historical classification/requiredness and engineering basic math recognition",
+    "Cyber-course exceptions and design credits by attempt year",
+    "Final school audit comparison, human usability, and LLM answer quality",
+    "Fresh installation on another PC"
+  ]
+}

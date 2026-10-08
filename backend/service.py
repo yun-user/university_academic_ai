@@ -64,6 +64,8 @@ class PlannerService:
     def evidence(self, current, rules):
         def source_for(key):
             base = [rules.sources[0], rules.sources[1]]
+            if key == "총 졸업인정학점":
+                base += ["학교 학사FAQ · 영어전용강좌 추가학점: 일반선택, 합계 최대5학점 · https://www.hongik.ac.kr/kr/education/academic-faq.do?article.offset=10&mode=list"]
             if key.startswith("설계") or "인정 범위" in key or "승인" in key or "어학" in key:
                 base += [rules.sources[2]]
             if "필수" in key or "지정과목" in key:

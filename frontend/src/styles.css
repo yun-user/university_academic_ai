@@ -1674,3 +1674,13 @@ footer {
     position: static;
   }
 }
+.classification-review { margin: 16px 0 22px; }
+.classification-review .table-wrap { overflow-x: auto; }
+.classification-review table { width: 100%; min-width: 760px; border-collapse: collapse; }
+.classification-review th { text-align: left; white-space: nowrap; color: var(--muted); }
+.classification-review th, .classification-review td { padding: 12px 10px; border-bottom: 1px solid #dce5df; vertical-align: top; }
+.classification-review th:first-child { width: 46px; }
+.classification-review td:nth-child(2) { min-width: 160px; }
+.classification-review td:nth-child(3) { min-width: 150px; }
+.classification-review td small { display: block; margin-top: 5px; }
+.classification-evidence { min-width: 260px; max-width: 480px; white-space: normal; line-height: 1.65; }

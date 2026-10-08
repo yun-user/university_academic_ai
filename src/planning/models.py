@@ -7,9 +7,10 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from src.planning.cohorts import MIN_ADMISSION_YEAR, MAX_ADMISSION_YEAR
 
-CATEGORIES = ("전공", "전문교양", "교양선택", "특성화교양", "전공기초영어",
+MAJOR_CATEGORIES = frozenset({"전공", "전공필수", "전공선택"})
+CATEGORIES = ("전공필수", "전공선택", "전공", "전문교양", "교양선택", "특성화교양", "전공기초영어",
               "MSC수학", "MSC과학", "MSC전산", "일반선택", "미확인")
-Category = Literal["전공", "전문교양", "교양선택", "특성화교양", "전공기초영어",
+Category = Literal["전공필수", "전공선택", "전공", "전문교양", "교양선택", "특성화교양", "전공기초영어",
                    "MSC수학", "MSC과학", "MSC전산", "일반선택", "미확인"]
 GRADES = ("A+", "A0", "B+", "B0", "C+", "C0", "D+", "D0", "P", "F", "F0", "NP", "미확정")
 STATUSES = ("취득", "수강중", "인정제외")
@@ -58,7 +59,7 @@ class Course(StrictModel):
             raise ValueError("설계 인정학점은 과목 학점보다 클 수 없습니다.")
         if self.sw_data_credits > self.credits:
             raise ValueError("SW·데이터 인정학점은 과목 학점보다 클 수 없습니다.")
-        if self.design_credits and self.category != "전공":
+        if self.design_credits and self.category not in MAJOR_CATEGORIES:
             raise ValueError("설계 인정학점은 전공 과목에만 입력하세요.")
         if self.area and self.category != "전문교양":
             raise ValueError("교양 영역은 전문교양 과목에만 입력하세요.")

@@ -233,7 +233,7 @@ def test_source_prerequisites_not_recommendation_dotted_lines():
     assert by['704711'].prerequisites==('725843','704818','704413')
     assert by['704814'].concurrent==('704711',)
     assert by['012317'].concurrent==('012316',)
-    assert not by['704838'].prerequisites  # dotted recommendation is not enforced
+    assert not by['704840'].prerequisites  # official current AI code; dotted recommendation is not enforced
     parsed,_=parse_candidates(candidate_rows(catalog))
     assert next(c for c in parsed if c.code=='704814').concurrent==('704711',)
 
@@ -266,3 +266,26 @@ def test_chat_returns_server_evidence_without_task_notes(client,data,monkeypatch
     assert response['mode']=='llm' and len(response['evidence'])==1
     assert response['evidence'][0]['current']==0 and response['evidence'][0]['sources']
     assert 'PRIVATE' not in json.dumps(seen)
+
+
+def test_api_classification_preview_import_and_persistence(tmp_path):
+    from src.planning.models import Attempt
+
+    with TestClient(create_app(tmp_path / "planner.sqlite3")) as client:
+        defaults = client.get("/api/bootstrap").json()
+        row = Attempt(code="704818", name="자료구조및프로그래밍실습", credits=3, year=2021, grade="P", category="전공")
+        payload = {"attempts": [row.model_dump()], "profile": defaults["profile"]}
+        preview = client.post("/api/courses/classify", json=payload, headers=H)
+        assert preview.status_code == 200
+        assert preview.json()["suggestions"][0]["selected"]
+        assert client.get("/api/profiles").json() == []
+        raw = "2021학년도 2학년 1학기\n학수번호\t과목명\t영문과목명\t학점\t성적\t재수강\n007001\t교양영어(1)\t\t1\tP\t"
+        imported = client.post("/api/import/portal", json={"text": raw, "profile": defaults["profile"]}, headers=H)
+        assert imported.status_code == 200
+        assert imported.json()["attempts"][0]["category"] == "일반선택"
+        payload["attempts"][0]["category"] = "전공필수"
+        saved = client.post("/api/profiles", json={**payload, "options": defaults["options"], "label": "synthetic classification"}, headers=H)
+        assert saved.status_code == 201
+        restored = client.get("/api/profiles/" + saved.json()["id"]).json()
+        assert restored["attempts"][0]["category"] == "전공필수"
+        assert client.post("/api/courses/classify", json=payload).status_code == 403

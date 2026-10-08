@@ -78,7 +78,7 @@ def parse_portal_text(text: str, catalog: list[Candidate]) -> PortalImport:
 def portal_course_name(name: str):
     # The visible Classnet legend defines (*) as English and (C) as online delivery.
     # These are delivery annotations, not course identity or credit category.
-    return re.sub(r"\s*\((?:\*|C)\)\s*$", "", name).strip()
+    return re.sub(r"(?:\s*\((?:\*|C)\)\s*)+$", "", name).strip()
 
 
 def parse_portal_tables(tables: list[dict], catalog: list[Candidate]) -> PortalImport:

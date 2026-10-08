@@ -1,0 +1,1558 @@
+{
+  "reviewed_on": "2026-10-08",
+  "sources": [
+    {
+      "file": "department_curriculum_20261008.html",
+      "sha256": "807838f4ce8980d38b1e51340489ed012b48366cfc1ff91b868d8934989ed6f2",
+      "url": "https://software.hongik.ac.kr/home/templates/curriculum/curriculum",
+      "title": "학과 홈페이지 교과과정 (2026-10-08 조회)"
+    },
+    {
+      "file": "department_required_20261008.html",
+      "sha256": "553357b97f0c626cbc1dd229b11be83ffc258cb3bd241b39217c55befdebbe78",
+      "url": "https://software.hongik.ac.kr/home/templates/curriculum/required",
+      "title": "학과 전공·인증필수 (2026-10-08 조회)"
+    },
+    {
+      "file": "english_credit_faq_20261008.html",
+      "sha256": "40e2dab9103db11fd8a2fa25333cbc92b37a17b0bd73bae6c399ca5c855dd00a",
+      "url": "https://www.hongik.ac.kr/kr/education/academic-faq.do?article.offset=10&mode=list",
+      "title": "학교 학사FAQ: 영어전용강좌"
+    },
+    {
+      "file": "curriculum_2026_classification.pdf",
+      "sha256": "9d96c675c8df7d3f3a75971da582975e624dfda33a10f194774942216a17e5a5",
+      "url": "https://ibook.hongik.ac.kr/Viewer/2026curriculum",
+      "title": "2026 교과과정 책자(안), PDF 34~49·55쪽"
+    },
+    {
+      "file": "software_freshmen_2020.pdf",
+      "sha256": "2faea134c700e6cbe63bf12c52ec90f5c36ec2c21ee4bfef0ec4cc26d0f96af9",
+      "url": "https://software.hongik.ac.kr/home/templates/community/home_upload/20200305151029.pdf",
+      "title": "2020 신입생 안내, PDF 10~11쪽"
+    },
+    {
+      "file": "engineering_liberal_2016_2021.pdf",
+      "sha256": "11854b0ab6f858619465cf6c7d71e1d95cb37d361c9b9b9c37088d09e080b24f",
+      "url": "https://mide.hongik.ac.kr/mide/0401.do?articleNo=140381&attachNo=82253&mode=download",
+      "title": "학교 게시 전문교양 영역표 · 2016~2021학번 (2025 게시)"
+    }
+  ],
+  "courses": [
+    {
+      "code": "725843",
+      "names": [
+        "창의적공학설계입문"
+      ],
+      "credits": 2.0,
+      "category": "전공선택",
+      "area": 0,
+      "source": 0,
+      "page": 0,
+      "catalog": true
+    },
+    {
+      "code": "704305",
+      "names": [
+        "회로이론"
+      ],
+      "credits": 3.0,
+      "category": "전공선택",
+      "area": 0,
+      "source": 0,
+      "page": 0,
+      "catalog": true
+    },
+    {
+      "code": "704818",
+      "names": [
+        "자료구조 및 프로그래밍 실습"
+      ],
+      "credits": 3.0,
+      "category": "전공필수",
+      "area": 0,
+      "source": 0,
+      "page": 0,
+      "catalog": true
+    },
+    {
+      "code": "704406",
+      "names": [
+        "신호 및 시스템"
+      ],
+      "credits": 3.0,
+      "category": "전공선택",
+      "area": 0,
+      "source": 0,
+      "page": 0,
+      "catalog": true,
+      "historical_conflict": "2020 안내 이수체계도는 전공필수, 현재 학과 홈페이지는 전공선택. 과거 수강의 필수 여부는 학과 확인 필요."
+    },
+    {
+      "code": "704413",
+      "names": [
+        "머신러닝및실습(1)"
+      ],
+      "credits": 3.0,
+      "category": "전공필수",
+      "area": 0,
+      "source": 0,
+      "page": 0,
+      "catalog": true
+    },
+    {
+      "code": "704509",
+      "names": [
+        "디지털공학"
+      ],
+      "credits": 3.0,
+      "category": "전공선택",
+      "area": 0,
+      "source": 0,
+      "page": 0,
+      "catalog": true
+    },
+    {
+      "code": "704308",
+      "names": [
+        "지능형전자시스템"
+      ],
+      "credits": 3.0,
+      "category": "전공선택",
+      "area": 0,
+      "source": 0,
+      "page": 0,
+      "catalog": true
+    },
+    {
+      "code": "704831",
+      "names": [
+        "인터넷공학(1)"
+      ],
+      "credits": 3.0,
+      "category": "전공선택",
+      "area": 0,
+      "source": 0,
+      "page": 0,
+      "catalog": true
+    },
+    {
+      "code": "704827",
+      "names": [
+        "자바프로그래밍 및 실습"
+      ],
+      "credits": 3.0,
+      "category": "전공선택",
+      "area": 0,
+      "source": 0,
+      "page": 0,
+      "catalog": true
+    },
+    {
+      "code": "704410",
+      "names": [
+        "컴퓨터구조"
+      ],
+      "credits": 3.0,
+      "category": "전공선택",
+      "area": 0,
+      "source": 0,
+      "page": 0,
+      "catalog": true
+    },
+    {
+      "code": "704826",
+      "names": [
+        "알고리즘 및 실습"
+      ],
+      "credits": 4.0,
+      "category": "전공필수",
+      "area": 0,
+      "source": 0,
+      "page": 0,
+      "catalog": true
+    },
+    {
+      "code": "704612",
+      "names": [
+        "머신러닝및실습(2)"
+      ],
+      "credits": 3.0,
+      "category": "전공필수",
+      "area": 0,
+      "source": 0,
+      "page": 0,
+      "catalog": true
+    },
+    {
+      "code": "704512",
+      "names": [
+        "운영체제"
+      ],
+      "credits": 3.0,
+      "category": "전공선택",
+      "area": 0,
+      "source": 0,
+      "page": 0,
+      "catalog": true
+    },
+    {
+      "code": "704828",
+      "names": [
+        "디자인패턴프로그래밍및실습"
+      ],
+      "credits": 3.0,
+      "category": "전공선택",
+      "area": 0,
+      "source": 0,
+      "page": 0,
+      "catalog": true
+    },
+    {
+      "code": "704832",
+      "names": [
+        "인터넷공학(2)"
+      ],
+      "credits": 3.0,
+      "category": "전공선택",
+      "area": 0,
+      "source": 0,
+      "page": 0,
+      "catalog": true
+    },
+    {
+      "code": "704502",
+      "names": [
+        "확률 및 불규칙 변수"
+      ],
+      "credits": 3.0,
+      "category": "전공선택",
+      "area": 0,
+      "source": 0,
+      "page": 0,
+      "catalog": true
+    },
+    {
+      "code": "704514",
+      "names": [
+        "통신이론"
+      ],
+      "credits": 3.0,
+      "category": "전공선택",
+      "area": 0,
+      "source": 0,
+      "page": 0,
+      "catalog": true
+    },
+    {
+      "code": "704822",
+      "names": [
+        "데이터베이스 및 실습"
+      ],
+      "credits": 3.0,
+      "category": "전공선택",
+      "area": 0,
+      "source": 0,
+      "page": 0,
+      "catalog": true
+    },
+    {
+      "code": "704836",
+      "names": [
+        "통신프로그래밍"
+      ],
+      "credits": 3.0,
+      "category": "전공선택",
+      "area": 0,
+      "source": 0,
+      "page": 0,
+      "catalog": true
+    },
+    {
+      "code": "704511",
+      "names": [
+        "네트워크실험"
+      ],
+      "credits": 3.0,
+      "category": "전공선택",
+      "area": 0,
+      "source": 0,
+      "page": 0,
+      "catalog": true
+    },
+    {
+      "code": "704833",
+      "names": [
+        "오픈소스소프트웨어"
+      ],
+      "credits": 3.0,
+      "category": "전공선택",
+      "area": 0,
+      "source": 0,
+      "page": 0,
+      "catalog": true
+    },
+    {
+      "code": "704816",
+      "names": [
+        "데이터 사이언스"
+      ],
+      "credits": 3.0,
+      "category": "전공선택",
+      "area": 0,
+      "source": 0,
+      "page": 0,
+      "catalog": true
+    },
+    {
+      "code": "190426",
+      "names": [
+        "엔지니어 앙트레프레너십"
+      ],
+      "credits": 1.0,
+      "category": "전공선택",
+      "area": 0,
+      "source": 0,
+      "page": 0,
+      "catalog": true
+    },
+    {
+      "code": "704814",
+      "names": [
+        "종합설계(2)"
+      ],
+      "credits": 3.0,
+      "category": "전공필수",
+      "area": 0,
+      "source": 0,
+      "page": 0,
+      "catalog": true
+    },
+    {
+      "code": "704711",
+      "names": [
+        "종합설계(1)"
+      ],
+      "credits": 3.0,
+      "category": "전공선택",
+      "area": 0,
+      "source": 0,
+      "page": 0,
+      "catalog": true
+    },
+    {
+      "code": "704817",
+      "names": [
+        "모바일 시스템 융합 및 실습"
+      ],
+      "credits": 3.0,
+      "category": "전공선택",
+      "area": 0,
+      "source": 0,
+      "page": 0,
+      "catalog": true
+    },
+    {
+      "code": "704713",
+      "names": [
+        "가상현실프로그래밍"
+      ],
+      "credits": 3.0,
+      "category": "전공선택",
+      "area": 0,
+      "source": 0,
+      "page": 0,
+      "catalog": true
+    },
+    {
+      "code": "704805",
+      "names": [
+        "소프트웨어공학"
+      ],
+      "credits": 3.0,
+      "category": "전공선택",
+      "area": 0,
+      "source": 0,
+      "page": 0,
+      "catalog": true
+    },
+    {
+      "code": "704811",
+      "names": [
+        "컴퓨터보안"
+      ],
+      "credits": 3.0,
+      "category": "전공선택",
+      "area": 0,
+      "source": 0,
+      "page": 0,
+      "catalog": true
+    },
+    {
+      "code": "704825",
+      "names": [
+        "안드로이드프로그래밍 및 실습"
+      ],
+      "credits": 3.0,
+      "category": "전공선택",
+      "area": 0,
+      "source": 0,
+      "page": 0,
+      "catalog": true
+    },
+    {
+      "code": "704837",
+      "names": [
+        "블록체인개론"
+      ],
+      "credits": 3.0,
+      "category": "전공선택",
+      "area": 0,
+      "source": 0,
+      "page": 0,
+      "catalog": true
+    },
+    {
+      "code": "704839",
+      "names": [
+        "지능형무선통신네트워크"
+      ],
+      "credits": 3.0,
+      "category": "전공선택",
+      "area": 0,
+      "source": 0,
+      "page": 0,
+      "catalog": true
+    },
+    {
+      "code": "704840",
+      "names": [
+        "인공지능"
+      ],
+      "credits": 3.0,
+      "category": "전공선택",
+      "area": 0,
+      "source": 0,
+      "page": 0,
+      "catalog": true
+    },
+    {
+      "code": "001012",
+      "names": [
+        "논리적사고와글쓰기(공학)"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 0,
+      "source": 3,
+      "page": 34,
+      "catalog": true
+    },
+    {
+      "code": "001020",
+      "names": [
+        "공학글쓰기"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 0,
+      "source": 3,
+      "page": 34,
+      "catalog": true
+    },
+    {
+      "code": "001009",
+      "names": [
+        "영어"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 0,
+      "source": 4,
+      "page": 3,
+      "catalog": false
+    },
+    {
+      "code": "001023",
+      "names": [
+        "대학영어"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 0,
+      "source": 3,
+      "page": 34,
+      "catalog": true
+    },
+    {
+      "code": "004004",
+      "names": [
+        "대학생활세미나"
+      ],
+      "credits": 1,
+      "category": "전문교양",
+      "area": 0,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002590",
+      "names": [
+        "서양철학입문"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 1,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002591",
+      "names": [
+        "동양철학입문"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 1,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002585",
+      "names": [
+        "문학과창의적사고"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 1,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002173",
+      "names": [
+        "언어의이해"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 1,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002551",
+      "names": [
+        "논리와사고"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 1,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002589",
+      "names": [
+        "현대인의의사소통"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 1,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002036",
+      "names": [
+        "현대사회와윤리"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 1,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002530",
+      "names": [
+        "협상의기술"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 1,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002529",
+      "names": [
+        "인간심리의이해"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 2,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002022",
+      "names": [
+        "사회학의이해"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 2,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002442",
+      "names": [
+        "경제학입문"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 2,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002019",
+      "names": [
+        "인간관계론"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 2,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002034",
+      "names": [
+        "매스컴과현대사회"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 2,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002592",
+      "names": [
+        "회계의이해"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 2,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002177",
+      "names": [
+        "마케팅의이해"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 2,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002207",
+      "names": [
+        "한국의문화유산"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 3,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002587",
+      "names": [
+        "한국사의이해"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 3,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002586",
+      "names": [
+        "동양사의이해"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 3,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002588",
+      "names": [
+        "서양사의이해"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 3,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002686",
+      "names": [
+        "글로벌사회의이해"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 3,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002540",
+      "names": [
+        "문화인류학입문"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 3,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002544",
+      "names": [
+        "세계시민의식"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 3,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002056",
+      "names": [
+        "미술의이해"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 4,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002059",
+      "names": [
+        "현대생활과디자인"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 4,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002163",
+      "names": [
+        "대중예술의이해"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 4,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002257",
+      "names": [
+        "조형예술과미학"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 4,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "420101",
+      "names": [
+        "시각과이미지"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 4,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002595",
+      "names": [
+        "디지털디자인입문"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 4,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002584",
+      "names": [
+        "사진예술의이해"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 4,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002558",
+      "names": [
+        "지식재산과법"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 6,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002543",
+      "names": [
+        "현대사회와법"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 6,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002560",
+      "names": [
+        "인권과국가"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 6,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002561",
+      "names": [
+        "범죄와사회"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 6,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002578",
+      "names": [
+        "국제관계와법"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 6,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002046",
+      "names": [
+        "과학사"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 7,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "004176",
+      "names": [
+        "컴퓨터정보통신공학개론"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 7,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002129",
+      "names": [
+        "정보사회와저작권"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 6,
+      "source": 3,
+      "page": 48,
+      "cohorts": [
+        2018,
+        2021
+      ]
+    },
+    {
+      "code": "002129",
+      "names": [
+        "정보사회와저작권"
+      ],
+      "credits": 3,
+      "category": "교양선택",
+      "area": 0,
+      "source": 3,
+      "page": 36,
+      "cohorts": [
+        2022,
+        2026
+      ]
+    },
+    {
+      "code": "002559",
+      "names": [
+        "예술과법"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 6,
+      "source": 3,
+      "page": 48,
+      "cohorts": [
+        2018,
+        2021
+      ]
+    },
+    {
+      "code": "002559",
+      "names": [
+        "예술과법"
+      ],
+      "credits": 3,
+      "category": "교양선택",
+      "area": 0,
+      "source": 3,
+      "page": 36,
+      "cohorts": [
+        2022,
+        2026
+      ]
+    },
+    {
+      "code": "004189",
+      "names": [
+        "산업·데이터공학의이해"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 6,
+      "source": 3,
+      "page": 49,
+      "cohorts": [
+        2022,
+        2026
+      ]
+    },
+    {
+      "code": "004186",
+      "names": [
+        "공학법제와계약전략"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 6,
+      "source": 3,
+      "page": 49,
+      "cohorts": [
+        2022,
+        2026
+      ]
+    },
+    {
+      "code": "002637",
+      "names": [
+        "창업과비즈니스모델의이해와활용"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 6,
+      "source": 3,
+      "page": 49,
+      "cohorts": [
+        2022,
+        2026
+      ]
+    },
+    {
+      "code": "008753",
+      "names": [
+        "CTO특강"
+      ],
+      "credits": 2,
+      "category": "전문교양",
+      "area": 7,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002597",
+      "names": [
+        "교양독일어(1)"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 5,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002598",
+      "names": [
+        "교양독일어(2)"
+      ],
+      "credits": 2,
+      "category": "전문교양",
+      "area": 5,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002599",
+      "names": [
+        "교양프랑스어(1)"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 5,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002600",
+      "names": [
+        "교양프랑스어(2)"
+      ],
+      "credits": 2,
+      "category": "전문교양",
+      "area": 5,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002601",
+      "names": [
+        "교양일본어(1)"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 5,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002602",
+      "names": [
+        "교양일본어(2)"
+      ],
+      "credits": 2,
+      "category": "전문교양",
+      "area": 5,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002603",
+      "names": [
+        "교양중국어(1)"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 5,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002604",
+      "names": [
+        "교양중국어(2)"
+      ],
+      "credits": 2,
+      "category": "전문교양",
+      "area": 5,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002605",
+      "names": [
+        "교양한문(1)"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 5,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002606",
+      "names": [
+        "교양한문(2)"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 5,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002607",
+      "names": [
+        "교양스페인어(1)"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 5,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002608",
+      "names": [
+        "교양스페인어(2)"
+      ],
+      "credits": 2,
+      "category": "전문교양",
+      "area": 5,
+      "source": 3,
+      "page": 48,
+      "catalog": true
+    },
+    {
+      "code": "002134",
+      "names": [
+        "소비자보호와법"
+      ],
+      "credits": 3,
+      "category": "교양선택",
+      "area": 0,
+      "source": 3,
+      "page": 36
+    },
+    {
+      "code": "002205",
+      "names": [
+        "독일의문화와예술"
+      ],
+      "credits": 3,
+      "category": "교양선택",
+      "area": 0,
+      "source": 3,
+      "page": 35
+    },
+    {
+      "code": "002533",
+      "names": [
+        "생물학탐구"
+      ],
+      "credits": 3,
+      "category": "교양선택",
+      "area": 0,
+      "source": 3,
+      "page": 37
+    },
+    {
+      "code": "007114",
+      "names": [
+        "전공기초영어(I)"
+      ],
+      "credits": 2,
+      "category": "전공기초영어",
+      "area": 0,
+      "source": 3,
+      "page": 34
+    },
+    {
+      "code": "007115",
+      "names": [
+        "전공기초영어(II)"
+      ],
+      "credits": 2,
+      "category": "전공기초영어",
+      "area": 0,
+      "source": 3,
+      "page": 34
+    },
+    {
+      "code": "008751",
+      "names": [
+        "디자인씽킹",
+        "디자인씽킹(DESIGN THINKING)"
+      ],
+      "credits": 3,
+      "category": "특성화교양",
+      "area": 0,
+      "source": 3,
+      "page": 34
+    },
+    {
+      "code": "008752",
+      "names": [
+        "창업과실용법률",
+        "창업과실용법률(LEGAL THINKING)"
+      ],
+      "credits": 3,
+      "category": "특성화교양",
+      "area": 0,
+      "source": 3,
+      "page": 34
+    },
+    {
+      "code": "012201",
+      "names": [
+        "대학수학(1)"
+      ],
+      "credits": 3,
+      "category": "MSC수학",
+      "area": 0,
+      "source": 3,
+      "page": 55,
+      "catalog": true
+    },
+    {
+      "code": "012202",
+      "names": [
+        "대학수학(2)"
+      ],
+      "credits": 3,
+      "category": "MSC수학",
+      "area": 0,
+      "source": 3,
+      "page": 55,
+      "catalog": true
+    },
+    {
+      "code": "012203",
+      "names": [
+        "응용수학(1)"
+      ],
+      "credits": 3,
+      "category": "MSC수학",
+      "area": 0,
+      "source": 3,
+      "page": 55,
+      "catalog": true
+    },
+    {
+      "code": "012204",
+      "names": [
+        "응용수학(2)"
+      ],
+      "credits": 3,
+      "category": "MSC수학",
+      "area": 0,
+      "source": 3,
+      "page": 55,
+      "catalog": true
+    },
+    {
+      "code": "012205",
+      "names": [
+        "선형대수학"
+      ],
+      "credits": 3,
+      "category": "MSC수학",
+      "area": 0,
+      "source": 3,
+      "page": 55,
+      "catalog": true
+    },
+    {
+      "code": "012206",
+      "names": [
+        "이산수학"
+      ],
+      "credits": 3,
+      "category": "MSC수학",
+      "area": 0,
+      "source": 3,
+      "page": 55,
+      "catalog": true
+    },
+    {
+      "code": "012207",
+      "names": [
+        "통계학"
+      ],
+      "credits": 3,
+      "category": "MSC수학",
+      "area": 0,
+      "source": 3,
+      "page": 55,
+      "catalog": true
+    },
+    {
+      "code": "012208",
+      "names": [
+        "컴퓨터응용통계"
+      ],
+      "credits": 3,
+      "category": "MSC수학",
+      "area": 0,
+      "source": 3,
+      "page": 55,
+      "catalog": true
+    },
+    {
+      "code": "012210",
+      "names": [
+        "확률및통계"
+      ],
+      "credits": 3,
+      "category": "MSC수학",
+      "area": 0,
+      "source": 3,
+      "page": 55,
+      "catalog": true
+    },
+    {
+      "code": "012102",
+      "names": [
+        "대학물리(1)"
+      ],
+      "credits": 3,
+      "category": "MSC과학",
+      "area": 0,
+      "source": 3,
+      "page": 55,
+      "catalog": true
+    },
+    {
+      "code": "012103",
+      "names": [
+        "대학물리실험(1)"
+      ],
+      "credits": 1,
+      "category": "MSC과학",
+      "area": 0,
+      "source": 3,
+      "page": 55,
+      "catalog": true
+    },
+    {
+      "code": "012105",
+      "names": [
+        "대학물리(2)"
+      ],
+      "credits": 3,
+      "category": "MSC과학",
+      "area": 0,
+      "source": 3,
+      "page": 55,
+      "catalog": true
+    },
+    {
+      "code": "012106",
+      "names": [
+        "대학물리실험(2)"
+      ],
+      "credits": 1,
+      "category": "MSC과학",
+      "area": 0,
+      "source": 3,
+      "page": 55,
+      "catalog": true
+    },
+    {
+      "code": "012108",
+      "names": [
+        "대학화학(1)"
+      ],
+      "credits": 3,
+      "category": "MSC과학",
+      "area": 0,
+      "source": 3,
+      "page": 55,
+      "catalog": true
+    },
+    {
+      "code": "012109",
+      "names": [
+        "대학화학실험(1)"
+      ],
+      "credits": 1,
+      "category": "MSC과학",
+      "area": 0,
+      "source": 3,
+      "page": 55,
+      "catalog": true
+    },
+    {
+      "code": "012112",
+      "names": [
+        "대학화학(2)"
+      ],
+      "credits": 3,
+      "category": "MSC과학",
+      "area": 0,
+      "source": 3,
+      "page": 55,
+      "catalog": true
+    },
+    {
+      "code": "012113",
+      "names": [
+        "대학화학실험(2)"
+      ],
+      "credits": 1,
+      "category": "MSC과학",
+      "area": 0,
+      "source": 3,
+      "page": 55,
+      "catalog": true
+    },
+    {
+      "code": "012301",
+      "names": [
+        "공학컴퓨터입문및실습"
+      ],
+      "credits": 3,
+      "category": "MSC전산",
+      "area": 0,
+      "source": 3,
+      "page": 55,
+      "catalog": true
+    },
+    {
+      "code": "012306",
+      "names": [
+        "웹프로그래밍"
+      ],
+      "credits": 3,
+      "category": "MSC전산",
+      "area": 0,
+      "source": 3,
+      "page": 55,
+      "catalog": true
+    },
+    {
+      "code": "101810",
+      "names": [
+        "C-프로그래밍"
+      ],
+      "credits": 3,
+      "category": "MSC전산",
+      "area": 0,
+      "source": 3,
+      "page": 55,
+      "catalog": true
+    },
+    {
+      "code": "012316",
+      "names": [
+        "파이썬프로그래밍(입문)"
+      ],
+      "credits": 3,
+      "category": "MSC전산",
+      "area": 0,
+      "source": 3,
+      "page": 55,
+      "catalog": true
+    },
+    {
+      "code": "012317",
+      "names": [
+        "파이썬프로그래밍(응용)"
+      ],
+      "credits": 3,
+      "category": "MSC전산",
+      "area": 0,
+      "source": 3,
+      "page": 55,
+      "catalog": true
+    },
+    {
+      "code": "002248",
+      "names": [
+        "예술과건축"
+      ],
+      "credits": 3,
+      "category": "전문교양",
+      "area": 4,
+      "source": 5,
+      "page": 5,
+      "cohorts": [
+        2018,
+        2021
+      ]
+    }
+  ],
+  "notes": [
+    "분류 제안은 학수번호·과목명·학점 일치 기준이며 학교 최종 졸업사정을 대신하지 않음.",
+    "2026 책자는 안(案). 과거 수강의 현재 참고 분류이며 소급 적용이 확인되었다는 뜻이 아님. 수강연도별 개정·사이버 인정 제한은 별도 확인.",
+    "전공필수 표시는 과목 구분이다. 개인별 필수목록 및 졸업 충족 여부를 자동 확정하지 않음.",
+    "영어 추가학점은 FAQ의 일반선택/PF/합계 최대5학점 규칙. 실제 성적표에 있는 행만 사용하며 (*) 표기에서 새 행을 생성하지 않음.",
+    "예술과건축 002248은 학교 게시 2016~2021학번 영역표에서 전문교양 4영역 확인. 조형예술과미학 002257과 동일과목으로 합치지 않음. 공학기초수학의 MSC 인정은 별도 확인."
+  ]
+}

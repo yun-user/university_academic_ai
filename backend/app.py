@@ -10,11 +10,12 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from backend.database import Database, MissingProfile, RevisionConflict
-from backend.schemas import AnalysisRequest, ChatRequest, SaveProfile, TranscriptText, Credentials
+from backend.schemas import AnalysisRequest, ChatRequest, SaveProfile, TranscriptText, Credentials, ClassificationRequest
 from backend.service import PlannerService
 from backend.auth import Auth, COOKIE, TTL
 from backend.features import register_features
 from src.planning.catalog import load_catalog
+from src.planning.classification import classify_attempts, classify_import
 from src.planning.io import read_transcript, sample_transcript, write_transcript
 from src.planning.llm import saved_connection
 from src.planning.models import CATEGORIES, GRADES, STATUSES, PlanOptions, Profile
@@ -160,7 +161,17 @@ def create_app(db_path=None, root=ROOT, auth_required=None):
         result = parse_portal_text(data.text, load_catalog(root))
         if not result.ready:
             raise HTTPException(422, " ".join(result.errors) or "성적표 과목을 찾지 못했습니다.")
-        return {"attempts": [a.model_dump() for a in result.attempts], "warnings": result.warnings}
+        attempts, review = classify_import(result.attempts, data.profile, root)
+        warnings = [w for w in result.warnings if "2026 교과과정" not in w and "‘미확인’" not in w]
+        warnings += review["notes"][:3]
+        if any(a.category == "미확인" for a in attempts):
+            warnings.append("미확인 과목은 졸업학점 계산에서 제외됩니다. 이수 내역의 학과 자료로 분류 확인에서 근거를 검토하세요.")
+        return {"attempts": [a.model_dump() for a in attempts], "warnings": warnings,
+                "classification": review}
+
+    @app.post("/api/courses/classify")
+    def classification(data: ClassificationRequest):
+        return classify_attempts(data.attempts, data.profile, root)
 
     @app.post("/api/import/csv")
     def csv(data: TranscriptText):

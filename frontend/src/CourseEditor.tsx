@@ -110,8 +110,8 @@ export default function CourseEditor({
                       onChange={(e) =>
                         update(index, {
                           category: e.target.value,
-                          area: 0,
-                          design_credits: 0,
+                          area: e.target.value === "전문교양" ? row.area : 0,
+                          design_credits: ["전공", "전공필수", "전공선택"].includes(e.target.value) ? row.design_credits : 0,
                         })
                       }
                     >
@@ -263,7 +263,7 @@ export default function CourseEditor({
                 min={0}
                 max={rows[editing].credits}
                 step={0.5}
-                disabled={rows[editing].category !== "전공"}
+                disabled={!["전공", "전공필수", "전공선택"].includes(rows[editing].category)}
                 value={rows[editing].design_credits}
                 onChange={(e) =>
                   update(editing, { design_credits: Number(e.target.value) })

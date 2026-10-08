@@ -6,7 +6,7 @@ from pathlib import Path
 import re
 import unicodedata
 
-from src.planning.models import Candidate
+from src.planning.models import Candidate, MAJOR_CATEGORIES
 
 
 def candidate_rows(candidates, excluded=()):
@@ -62,7 +62,7 @@ def load_catalog(project_root: Path) -> list[Candidate]:
             if row.get("검토필요") == "Y":
                 continue
             kind = row["이수구분"]
-            category = "전공" if kind in {"전공필수", "전공선택"} else "일반선택"
+            category = kind if kind in MAJOR_CATEGORIES else "일반선택"
             if row["MSC여부"] == "Y":
                 category = "MSC" + row["MSC분야"]
             elif kind == "기본소양":
@@ -83,7 +83,7 @@ def load_catalog(project_root: Path) -> list[Candidate]:
             for (code, credits), semesters in by_code.items():
                 candidates.append(Candidate(code=code, name=row["교과목명"], credits=credits,
                     category=category, area=int(area.group(1)) if area and category == "전문교양" else 0,
-                    design_credits=design_by_name.get(normalized_name(row["교과목명"]), 0) if category == "전공" else 0,
+                    design_credits=design_by_name.get(normalized_name(row["교과목명"]), 0) if category in MAJOR_CATEGORIES else 0,
                     # Alternatives satisfying one requirement are not necessarily
                     # identical courses for credit recognition.
                     semesters=tuple(semesters),
@@ -101,4 +101,14 @@ def load_catalog(project_root: Path) -> list[Candidate]:
             "concurrent": tuple(review["concurrent"].get(c.code, ())),
             "source": c.source.replace("선수조건 미확인", "2026 이수체계도 1쪽 선수·병수 적용, MSC 상세 규정 별도 확인")
         }) for c in candidates]
-    return candidates
+    # The department website separates actual course names from area headings.
+    # Its reviewed snapshot also resolves the old CSV's required/elective labels.
+    from src.planning.classification import load_classification
+    review = load_classification(project_root)
+    current = {row["code"]: row for row in review["courses"] if row.get("catalog")}
+    candidates = [c.model_copy(update={"alternatives": ("001009",)}) if c.code == "001023" else c
+                  for c in candidates]
+    return [c.model_copy(update={"name": current[c.code]["names"][0],
+                               "category": current[c.code]["category"],
+                               "source": c.source + " · 학과 홈페이지 이수구분 대조(2026-10-08)"})
+            if c.code in current else c for c in candidates]
