@@ -168,6 +168,19 @@ export default function CourseEditor({
             </button>
           </div>
           <div className="form-grid">
+            <label>
+              SW·데이터 인정학점 (2022학번부터)
+              <input
+                type="number"
+                min={0}
+                max={rows[editing].credits}
+                step={0.5}
+                value={rows[editing].sw_data_credits ?? 0}
+                onChange={(e) =>
+                  update(editing, { sw_data_credits: Number(e.target.value) })
+                }
+              />
+            </label>
             {(
               ["code", "name", "credits", "year", "equivalent_code"] as const
             ).map((key, i) => (
@@ -260,7 +273,9 @@ export default function CourseEditor({
           </div>
           <p className="muted">
             동일과목·교양영역·설계학점은 수강 당시 학교 인정 기준을 확인한 값만
-            입력하세요. F/NP와 인정제외 과목은 졸업학점에서 제외됩니다.
+            입력하세요. SW·데이터 인정학점은 별도 요건 점검에만 사용하며
+            총학점에 다시 더하지 않습니다. 대상 과목과 중복 인정 여부는 학교에서
+            확인하세요. F/NP와 인정제외 과목은 졸업학점에서 제외됩니다.
           </p>
         </div>
       )}

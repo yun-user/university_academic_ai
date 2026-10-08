@@ -1,4 +1,4 @@
-"""2020학번 졸업요건 점검 및 잠정 이수계획. 개인 입력은 세션 메모리만 사용."""
+"""2018~2026학번 졸업요건 점검 및 잠정 이수계획. 개인 입력은 세션 메모리만 사용."""
 import json
 import hashlib
 
@@ -9,6 +9,7 @@ from src.config import PROJECT_ROOT
 from src.planning.audit import audit
 from src.planning.catalog import load_catalog, candidate_rows, parse_candidates
 from src.planning.io import COLUMNS, parse_rows, read_transcript, sample_transcript, to_rows, write_transcript
+from src.planning.cohorts import SUPPORTED_ADMISSION_YEARS
 from src.planning.models import Attempt, CATEGORIES, Candidate, GRADES, PlanOptions, Profile, STATUSES, Substitution
 from src.planning.planner import build_roadmap
 from src.planning.rules import load_rules
@@ -21,7 +22,7 @@ from src.planning.portal_ui import controls as portal_controls
 
 st.set_page_config(page_title="나의 졸업 로드맵", page_icon="🧭", layout="wide")
 st.title("나의 졸업 로드맵")
-st.caption("2020학번 · 홍익대학교 세종캠퍼스 소프트웨어융합학과 · 심화 / 일반과정")
+st.caption("2018~2026학번 · 홍익대학교 세종캠퍼스 소프트웨어융합학과 · 심화 / 일반과정")
 st.info("이수내역으로 부족한 요건을 확인하고 다음 학기 계획을 세웁니다. 현재는 공식 규정 대조 중인 참고용 버전이며, 최종 졸업사정은 학교에서 확인해야 합니다.")
 st.caption("이름·학번은 입력하지 않습니다. 입력은 이 브라우저 세션에서 처리하고 서버 파일에 자동 저장하지 않습니다. LLM 맞춤 추천을 켜고 전송에 동의한 경우에만 요약 정보를 OpenAI에 보냅니다. 새로고침 전에 ‘전체 입력 백업’을 내려받아 보관하세요.")
 
@@ -58,11 +59,21 @@ def check_table(result):
                          for c in result.checks])
 
 
+def scope_changed():
+    for name in ("thesis", "english", "general_approval", "design_sequence", "recognized_course_scope", "specialized_course", "basic_english_course", "sw_data_course", "science_course"):
+        st.session_state["planner_" + name] = "확인 필요"
+    st.session_state.planner_required_list_checked = False
+    st.session_state.planner_substitutions = [{**s, "confirmed": False} for s in st.session_state.planner_substitutions]
+    st.session_state.planner_llm_consent = False
+
+
 left, right = st.columns([1, 2])
-track = left.radio("졸업 과정", ["심화", "일반"], horizontal=True,key="planner_track")
-right.caption("대상 입학연도: 2020년. 편입·전과·복수전공과 다른 입학연도는 현재 지원 범위 밖입니다.")
+st.session_state.setdefault("planner_admission_year", 2020)
+admission_year = right.selectbox("입학연도 (학번)", SUPPORTED_ADMISSION_YEARS, key="planner_admission_year", on_change=scope_changed)
+track = left.radio("졸업 과정", ["심화", "일반"], horizontal=True, key="planner_track", on_change=scope_changed)
+right.caption("단일전공 신입학 기준. 학번·과정 변경 시 승인·대체인정을 다시 확인합니다.")
 try:
-    rules = load_rules(PROJECT_ROOT, track)
+    rules = load_rules(PROJECT_ROOT, track, admission_year)
     catalog = load_catalog(PROJECT_ROOT)
     fingerprint = source_fingerprint(PROJECT_ROOT)
 except (ValueError, OSError) as exc:
@@ -86,7 +97,7 @@ st.subheader("1. 이수내역 입력")
 portal_controls(catalog, replace_rows)
 buttons = st.columns(3)
 if buttons[0].button("가상 예제로 시작"):
-    replace_rows(to_rows(sample_transcript()))
+    replace_rows(to_rows(sample_transcript(admission_year)))
 buttons[1].download_button("빈 CSV 양식", write_transcript([]), "transcript-template.csv", "text/csv")
 if buttons[2].button("이수내역 비우기"):
     replace_rows([])
@@ -111,15 +122,17 @@ with st.expander("과목 한 개씩 입력"):
         grade = b.selectbox("성적", GRADES)
         status = c.selectbox("이수 상태", STATUSES)
         a,b,c,d = st.columns(4)
-        year = a.number_input("수강연도", min_value=2000, max_value=2100, value=2020)
+        year = a.number_input("수강연도", min_value=2000, max_value=2100, value=admission_year)
         term = b.selectbox("수강학기", [1,2,3,4])
         area = c.selectbox("교양 영역 (해당 없으면 0)", range(8))
         design = d.number_input("설계 인정학점", min_value=0.0, max_value=30.0, value=0.0, step=0.5)
+        sw_data = st.number_input("SW·데이터 인정학점", min_value=0.0, max_value=30.0, value=0.0, step=0.5,
+                                 help="2022학번부터 적용. 학교에서 확인한 인정학점만 입력하며 총학점에는 다시 더하지 않습니다.")
         equivalent = st.text_input("공식 확인한 동일과목 대표 학수번호 (해당할 때만)")
         if st.form_submit_button("이수내역에 추가"):
             try:
                 row = Attempt(code=code,name=name,credits=credits,category=category,grade=grade,status=status,
-                              year=year,term=term,area=area,design_credits=design,equivalent_code=equivalent)
+                              year=year,term=term,area=area,design_credits=design,sw_data_credits=sw_data,equivalent_code=equivalent)
             except ValueError as exc:
                 st.error(str(exc))
             else:
@@ -151,7 +164,7 @@ required = st.text_input("공식 확인한 필수과목 학수번호 (쉼표로 
 checked = st.checkbox("개인에게 적용되는 필수목록과 대체·개정 사항을 확인했습니다",key="planner_required_list_checked")
 a,b = st.columns(2)
 thesis = a.selectbox("졸업논문·졸업작품 승인 상태", ["확인 필요","미충족","충족"],key="planner_thesis")
-english = b.selectbox("어학 인정·제출 상태 (심화과정)", ["확인 필요","미충족","충족"], disabled=track=="일반",key="planner_english")
+english = b.selectbox("어학 인정·제출 상태", ["확인 필요","미충족","충족"],key="planner_english")
 manual_checks = {}
 with st.expander("학점 외 인정 조건 확인"):
     st.caption("2026년 공통 내규와 본인에게 적용되는 학과 기준을 대조한 상태입니다. 과목 추천이나 총학점 충족만으로 이 조건을 자동 충족 처리하지 않습니다.")
@@ -159,26 +172,28 @@ with st.expander("학점 외 인정 조건 확인"):
         ("general_approval","일반과정 적용·변경 승인 확인",track!="일반"),
         ("design_sequence","설계 이수순서·프로그램 이수체계 확인",track!="심화"),
         ("recognized_course_scope","교양·MSC 인정 범위 확인 (사이버·타 캠퍼스 등)",track!="심화"),
-        ("specialized_course","특성화교양 지정과목 확인",False),
+        ("specialized_course","특성화교양 지정과목 확인",admission_year < 2019),
+        ("sw_data_course","SW·데이터 과목·중복인정 확인",admission_year < 2022),
+        ("science_course","학과 과학 지정과목 확인",track != "심화" or admission_year < 2021),
         ("basic_english_course","전공기초영어 지정과목 확인",False)]:
         manual_checks[name] = st.selectbox(label,["확인 필요","미충족","충족"],disabled=disabled,key="planner_"+name)
 with st.expander("학교에서 확인한 대체과목 인정", expanded=False):
     st.write("예를 들어 A 과목 대신 B 과목을 이수하면 A의 필수요건을 인정하는 경우입니다. 아래 관계는 한 방향으로만 적용하며, 두 과목의 학점을 합치거나 선수과목 조건을 면제하지 않습니다.")
     st.caption("개인별 필수과목은 위의 ‘공식 확인한 필수과목 학수번호’에도 원래 과목 번호를 입력하세요. 기본 점검에 포함된 글쓰기·영어·과학·설계 과목에도 대체인정을 적용할 수 있습니다.")
-    st.caption("2020학번인 본인에게 적용되는 과정·기간을 확인한 경우에만 입력하세요. 기간은 대체과목을 수강한 시점 기준이며 1=1학기, 3=하계, 2=2학기, 4=동계 순서입니다. 확인 근거에는 공지명·URL·확인일 등을 적고 이름·학번은 적지 마세요.")
+    st.caption("선택한 입학연도에 적용되는 과정·기간을 확인한 경우에만 입력하세요. 기간은 대체과목을 수강한 시점 기준이며 1=1학기, 3=하계, 2=2학기, 4=동계 순서입니다. 확인 근거에는 공지명·URL·확인일 등을 적고 이름·학번은 적지 마세요.")
     with st.form("planner_add_substitution"):
         a,b,c = st.columns(3)
         original_code = a.text_input("원래 필수과목 학수번호")
         replacement_code = b.text_input("대체 이수과목 학수번호")
         substitution_track = c.selectbox("대체인정 적용 과정", ["심화", "일반"], index=0 if track=="심화" else 1)
         a,b,c,d = st.columns(4)
-        substitution_start_year = a.number_input("대체인정 시작 연도", min_value=2020, max_value=2100, value=2020)
+        substitution_start_year = a.number_input("대체인정 시작 연도", min_value=2000, max_value=2100, value=admission_year)
         substitution_start_term = b.selectbox("대체인정 시작 학기", [1,3,2,4])
-        substitution_end_year = c.number_input("대체인정 종료 연도", min_value=2020, max_value=2100, value=2026)
+        substitution_end_year = c.number_input("대체인정 종료 연도", min_value=2000, max_value=2100, value=2026)
         substitution_end_term = d.selectbox("대체인정 종료 학기", [1,3,2,4], index=3)
         no_end = st.checkbox("종료 시점 제한이 없는 것으로 확인했습니다")
         substitution_source = st.text_input("대체인정 확인 근거", max_chars=500)
-        substitution_confirmed = st.checkbox("해당 과정·2020학번·수강기간의 대체인정을 학교 자료나 학과에서 확인했습니다")
+        substitution_confirmed = st.checkbox("선택한 과정·입학연도·수강기간의 대체인정을 학교 자료나 학과에서 확인했습니다")
         if st.form_submit_button("대체인정 추가"):
             try:
                 substitution = Substitution(required_code=original_code,replacement_code=replacement_code,
@@ -207,7 +222,7 @@ with st.expander("학교에서 확인한 대체과목 인정", expanded=False):
             st.rerun()
     st.caption("대체인정 설정은 이수내역 CSV에 포함되지 않습니다. 로드맵 계산 후 JSON 결과에 함께 저장됩니다.")
 try:
-    profile = Profile(track=track, required_codes=tuple(required.split(",")), required_list_checked=checked,
+    profile = Profile(admission_year=admission_year, track=track, required_codes=tuple(required.split(",")), required_list_checked=checked,
                       thesis=thesis, english=english, substitutions=tuple(st.session_state.planner_substitutions),**manual_checks)
 except ValueError as exc:
     st.error(str(exc))
@@ -232,7 +247,7 @@ if not attempts:
     st.info("이수내역을 입력하거나 ‘가상 예제로 시작’을 누르면 부족한 요건을 계산할 수 있습니다.")
 
 st.subheader("4. 학기별 로드맵")
-st.warning("기본 후보의 선수과목은 아직 확인되지 않았습니다. 숫자 (1)·(2)가 붙은 과목도 순서를 자동 보장하지 않으므로, 학과의 이수체계를 확인해 아래 후보 표에 선수학수번호를 입력하세요.")
+st.warning("첨부 2026 이수체계도의 선수·병수 관계를 반영했습니다. 학번과 별개로 수강연도 기준을 적용하며, 개별 면제·개정과 실제 개설은 학교에서 확인하세요.")
 st.caption("현재 교과과정의 개설 학기를 가정해 배치합니다. ‘부학기’만 표기된 학기는 자동 개설로 취급하지 않습니다. 교과과정에 없는 과목은 후보 표에 직접 추가할 수 있습니다.")
 with st.expander("추천 후보·개설 학기·선수과목 조정", expanded=False):
     st.caption("선수학수번호는 쉼표로 구분하고 이전 학기까지 취득해야 하는 과목만 적으세요. 공식 확인되지 않은 선수조건을 임의로 추가하지 마세요. 동일과목코드는 중복 학점 인정이 불가능하다고 공식 확인된 경우에만 입력합니다. 필수요건을 대신 채우는 선택·대체과목이라는 이유만으로 묶지 마세요. 후보를 지우거나 추천을 해제하면 배치에서 제외됩니다.")

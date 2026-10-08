@@ -26,13 +26,13 @@ def package(root: Path, output: Path, *, include_web=False):
     paths.append("config/reviewed_rules/sources/"+design["source_file"])
     # Only these maintained docs/tests and synthetic outputs are distributable.
     paths += ["docs/"+n for n in ["졸업로드맵_실행및시연.md","졸업로드맵_설계와검증보고서.md",
-                                  "졸업로드맵_규정확인과_검증.md","졸업로드맵_개발계획.md","졸업로드맵_학교연동.md"]]
+                                  "졸업로드맵_규정확인과_검증.md","졸업로드맵_개발계획.md","졸업로드맵_학교연동.md","졸업로드맵_학번선택과검증.md"]]
     paths += ["tests/unit/"+n for n in ["test_planning.py","test_planning_substitutions.py","test_planning_workspace.py","test_planning_llm.py"]]
     paths += ["tests/unit/test_planning_portal.py", "tests/ui/test_planner_page.py", "tests/ui/test_planner_portal.py"]
     if include_web:
         paths += ["requirements-web.txt", "setup_web.cmd", "start_web.cmd",
                   "docs/졸업로드맵_웹앱구조와시연.md", "docs/졸업로드맵_최종보강과검증.md",
-                  "tests/integration/test_web_api.py", "tests/integration/test_web_features.py",
+                  "tests/integration/test_web_api.py", "tests/integration/test_web_features.py", "tests/integration/test_web_cohorts.py",
                   "frontend/package.json", "frontend/package-lock.json", "frontend/index.html",
                   "frontend/tsconfig.json", "frontend/vite.config.ts"]
         paths += [p.relative_to(root).as_posix() for p in sorted((root / "backend").glob("*.py"))]

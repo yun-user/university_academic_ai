@@ -86,7 +86,7 @@ def controls(catalog, replace_rows):
                     "교양영역": st.column_config.NumberColumn(min_value=0, max_value=7, step=1),
                     "설계인정학점": st.column_config.NumberColumn(min_value=0, max_value=30, step=0.5),
                 })
-        checked = st.checkbox("2020학번 적용 대상이며, 가져온 학기·과목 수와 이수구분·재수강·설계학점을 확인했습니다",
+        checked = st.checkbox("선택한 입학연도의 적용 대상이며, 가져온 학기·과목 수와 이수구분·재수강·설계학점을 확인했습니다",
                               key=f"planner_portal_checked_{revision}")
         st.caption("적용하면 현재 이수내역 전체가 이 표로 바뀝니다. 미확인 과목은 적용 후에도 수정할 수 있습니다. 학교 성적을 가져오는 것만으로 LLM에 전송하지 않으며, 전송 동의는 다시 받습니다.")
         if st.button("가져온 이수내역 적용", disabled=not checked):

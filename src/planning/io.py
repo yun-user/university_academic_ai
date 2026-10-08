@@ -6,6 +6,7 @@ from src.planning.models import Attempt
 
 COLUMNS = {"학수번호": "code", "과목명": "name", "학점": "credits", "이수구분": "category",
            "교양영역": "area", "설계인정학점": "design_credits", "동일과목코드": "equivalent_code",
+           "SW데이터인정학점": "sw_data_credits",
            "수강연도": "year", "학기": "term", "성적": "grade", "상태": "status"}
 REQUIRED = {"학수번호", "과목명", "학점", "이수구분", "수강연도", "학기", "성적", "상태"}
 
@@ -65,7 +66,7 @@ def write_transcript(attempts) -> bytes:
     return stream.getvalue().encode("utf-8-sig")
 
 
-def sample_transcript():
+def sample_transcript(admission_year=2020):
     """Synthetic course list, unrelated to any logged-in account."""
     data = [("001012", "논리적사고와글쓰기(공학)", 3, "전문교양", 0, 0),
             ("001009", "영어", 3, "전문교양", 0, 0),
@@ -76,4 +77,4 @@ def sample_transcript():
             ("725843", "창의적공학설계입문", 2, "전공", 0, 2),
             ("704818", "자료구조및프로그래밍실습", 3, "전공", 0, 0)]
     return [Attempt(code=c, name=n, credits=v, category=k, area=a, design_credits=d,
-                    year=2020, grade="B0") for c,n,v,k,a,d in data]
+                    year=admission_year, grade="B0") for c,n,v,k,a,d in data]

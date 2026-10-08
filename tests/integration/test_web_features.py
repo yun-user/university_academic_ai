@@ -159,7 +159,7 @@ def test_sources_evidence_and_declared_unknowns(client,data):
 def test_evaluation_requires_evidence_and_synthetic_not_real(client):
     initial=client.get('/api/evaluations').json()
     assert initial['records']==[] and initial['synthetic']['real_student_accuracy'] is None
-    assert initial['synthetic']['total']==initial['synthetic']['passed']==14
+    assert initial['synthetic']['total']==initial['synthetic']['passed']==32
     row={'kind':'규정 대조','case_label':'SYNTHETIC-01','track':'심화','verified':True,'passed':True}
     assert post(client,'evaluations',row).status_code==422
     row.update(expected='3',observed='3',evidence='가상 검증; 실제 학교 대조 아님')

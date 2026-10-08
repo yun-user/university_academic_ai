@@ -12,6 +12,7 @@ from src.planning.models import Candidate
 def candidate_rows(candidates, excluded=()):
     return [{"추천":c.code not in excluded,"학수번호":c.code,"과목명":c.name,"학점":c.credits,
         "이수구분":c.category,"교양영역":c.area,"설계인정학점":c.design_credits,
+        "SW데이터인정학점":c.sw_data_credits,
         "동일과목코드":c.equivalent_code,"개설학기":",".join(map(str,c.semesters)),
         "선수학수번호":",".join(c.prerequisites),"병수학수번호":",".join(c.concurrent),"선택대안학수번호":",".join(c.alternatives),"출처":c.source} for c in candidates]
 

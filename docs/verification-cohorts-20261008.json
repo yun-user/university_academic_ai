@@ -1,0 +1,76 @@
+{
+  "verified_on": "2026-10-08",
+  "scope": "Implementation verification with synthetic records; not official school approval or actual-student accuracy.",
+  "supported_admission_years": [
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025,
+    2026
+  ],
+  "supported_track_combinations": 18,
+  "full_python_suite": {
+    "passed": 512,
+    "warnings": 2,
+    "seconds": 35.99
+  },
+  "frontend": {
+    "typecheck": "passed",
+    "production_build": "passed"
+  },
+  "synthetic_scenarios": {
+    "passed": 32,
+    "total": 32,
+    "actual_student_accuracy": null
+  },
+  "unpacked_package_tests": {
+    "passed": 208,
+    "warnings": 2,
+    "seconds": 26.95,
+    "environment": "Separate extracted folder on the same Windows PC using the existing virtualenv",
+    "final_non_markdown_payloads_identical_to_tested": 82
+  },
+  "browser": {
+    "cohort_switches": [
+      2018,
+      2022,
+      2024
+    ],
+    "synthetic_course_count": 8,
+    "earned_credits": 21,
+    "save_reload_restore": "passed",
+    "mobile_width": 390,
+    "horizontal_document_overflow": false,
+    "console_errors": 0,
+    "preview": "images/path-cohort-selection-20261008.png"
+  },
+  "database": {
+    "schema_version": 3,
+    "legacy_v2_migration_preservation": "passed",
+    "legacy_backup_and_csv": "passed"
+  },
+  "llm_validation": "Mock provider; selected cohort and actual rule checks reach the request context",
+  "privacy_scan": {
+    "staged_files_scanned": 231,
+    "configured_credential_matches": 0,
+    "token_pattern_matches": 0,
+    "private_database_or_environment_files": 0
+  },
+  "package": {
+    "file": "graduation-roadmap-cohorts-2018-2026-20261008.zip",
+    "files": 93,
+    "bytes": 6090223,
+    "sha256": "070690ea20ac5c96a2b88d1176d2e499876e719599360c9ea543057bf3b88fe1",
+    "manifest": "passed"
+  },
+  "remaining_external_validation": [
+    "Final school criteria and latest department rules, including advanced science assignments after cohort 2020",
+    "Official SW/data recognition, substitutions, course offerings and individual exemptions",
+    "Actual-school audit comparison, human usability and LLM quality evaluation",
+    "Fresh installation on another PC"
+  ]
+}

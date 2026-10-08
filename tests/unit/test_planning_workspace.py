@@ -100,5 +100,5 @@ def test_new_manual_conditions_do_not_become_complete_from_credits():
 def test_acceptance_scenarios_report_does_not_claim_real_student_accuracy():
     from src.planning.evaluation import evaluate_scenarios
     report = evaluate_scenarios(PROJECT_ROOT)
-    assert report["total"] == report["passed"] == 14
+    assert report["total"] == report["passed"] == 32
     assert report["real_student_accuracy"] is None

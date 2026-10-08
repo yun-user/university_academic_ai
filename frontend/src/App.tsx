@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { api } from "./api";
 import CourseEditor from "./CourseEditor";
+import CohortSummary from "./CohortSummary";
 import {
   PlanControls,
   CandidateTools,
@@ -57,6 +58,8 @@ const manualFields = [
   ["english", "어학 인정·제출 및 적용 확인"],
   ["specialized_course", "특성화교양 지정과목"],
   ["basic_english_course", "전공기초영어 지정과목"],
+  ["sw_data_course", "SW·데이터 과목·중복인정 확인 (2022학번부터)"],
+  ["science_course", "학과 과학 지정과목 확인 (2021학번 이후 심화)"],
   ["design_sequence", "설계 이수순서 (심화)"],
   ["recognized_course_scope", "교양·MSC 인정 범위 (심화)"],
   ["general_approval", "일반과정 변경 승인"],
@@ -197,6 +200,24 @@ export default function App() {
     setDirty(true);
     setNotice("");
   }
+  async function changeScope(admission_year: number, track: Profile["track"]) {
+    if (!data) return;
+    const profile = {
+      ...data.profile,
+      admission_year,
+      track,
+      required_list_checked: false,
+      substitutions: data.profile.substitutions.map((s) => ({
+        ...s,
+        confirmed: false,
+      })),
+    };
+    for (const [key] of manualFields) profile[key] = "확인 필요";
+    await apply({ profile, placements: null });
+    setNotice(
+      `${admission_year}학번 ${track}과정으로 기준을 바꾸었습니다. 이수내역은 유지하며 승인 상태·대체인정은 다시 확인해 주세요. 수동 배치는 자동 계획으로 전환했습니다.`,
+    );
+  }
   async function apply(patch: Partial<Input>) {
     if (!data) return;
     const next = { ...data, ...patch };
@@ -232,7 +253,9 @@ export default function App() {
   async function demo() {
     if (!data) return;
     await work("예시 과목을 불러오고 있어요…", async () => {
-      const demo = await api<{ attempts: Attempt[] }>("/demo");
+      const demo = await api<{ attempts: Attempt[] }>(
+        `/demo?admission_year=${data.profile.admission_year}`,
+      );
       const next = { ...data, ...demo, placements: null };
       change({ ...demo, placements: null });
       setSelected(null);
@@ -426,7 +449,8 @@ export default function App() {
           </button>
         </div>
         <div className="school-label">
-          홍익대학교 세종캠퍼스<small>소프트웨어융합학과 · 2020학번</small>
+          홍익대학교 세종캠퍼스
+          <small>소프트웨어융합학과 · {data.profile.admission_year}학번</small>
         </div>
       </aside>
       <div className="main-shell">
@@ -453,7 +477,7 @@ export default function App() {
           <div className="page-heading">
             <div>
               <div className="eyebrow">
-                2020 COHORT <span />{" "}
+                {data.profile.admission_year} COHORT <span />{" "}
                 {data.profile.track === "심화"
                   ? "ENGINEERING TRACK"
                   : "GENERAL TRACK"}
@@ -513,6 +537,11 @@ export default function App() {
           <fieldset className="workspace" disabled={Boolean(busy)}>
             {tab === "overview" && (
               <>
+                <CohortSummary
+                  config={config}
+                  profile={data.profile}
+                  onChange={changeScope}
+                />
                 <div className="stats">
                   <div className="stat-card featured">
                     <span>현재 졸업인정학점</span>
@@ -662,26 +691,11 @@ export default function App() {
                 <section className="panel settings-panel">
                   <div className="section-heading">
                     <h2>나의 계획 조건</h2>
-                    <span className="muted">2020학번 · 단일전공 신입학</span>
+                    <span className="muted">
+                      {data.profile.admission_year}학번 · 단일전공 신입학
+                    </span>
                   </div>
                   <div className="form-grid">
-                    <label>
-                      이수 과정
-                      <select
-                        value={data.profile.track}
-                        onChange={(e) =>
-                          change({
-                            profile: {
-                              ...data.profile,
-                              track: e.target.value as Profile["track"],
-                            },
-                          })
-                        }
-                      >
-                        <option>심화</option>
-                        <option>일반</option>
-                      </select>
-                    </label>
                     <label>
                       계획 시작 연도
                       <input
@@ -807,26 +821,37 @@ export default function App() {
                       학교 기준으로 개인 필수목록을 확인했습니다.
                     </label>
                     <div className="form-grid">
-                      {manualFields.map(([key, text]) => (
-                        <label key={key}>
-                          {text}
-                          <select
-                            value={data.profile[key]}
-                            onChange={(e) =>
-                              change({
-                                profile: {
-                                  ...data.profile,
-                                  [key]: e.target.value,
-                                },
-                              })
-                            }
-                          >
-                            {["확인 필요", "미충족", "충족"].map((x) => (
-                              <option key={x}>{x}</option>
-                            ))}
-                          </select>
-                        </label>
-                      ))}
+                      {manualFields
+                        .filter(
+                          ([key]) =>
+                            (key !== "specialized_course" ||
+                              data.profile.admission_year >= 2019) &&
+                            (key !== "sw_data_course" ||
+                              data.profile.admission_year >= 2022) &&
+                            (key !== "science_course" ||
+                              (data.profile.admission_year >= 2021 &&
+                                data.profile.track === "심화")),
+                        )
+                        .map(([key, text]) => (
+                          <label key={key}>
+                            {text}
+                            <select
+                              value={data.profile[key]}
+                              onChange={(e) =>
+                                change({
+                                  profile: {
+                                    ...data.profile,
+                                    [key]: e.target.value,
+                                  },
+                                })
+                              }
+                            >
+                              {["확인 필요", "미충족", "충족"].map((x) => (
+                                <option key={x}>{x}</option>
+                              ))}
+                            </select>
+                          </label>
+                        ))}
                     </div>
                   </details>
                   <button className="primary" onClick={() => void analyze()}>
@@ -963,8 +988,8 @@ export default function App() {
                           checked={importConfirmed}
                           onChange={(e) => setImportConfirmed(e.target.checked)}
                         />{" "}
-                        2020학번 대상임을 확인했고, 현재 이수 표를 이 내역으로
-                        바꿉니다.
+                        선택한 {data.profile.admission_year}학번 기준을
+                        확인했고, 현재 이수 표를 이 내역으로 바꿉니다.
                       </label>
                       <button
                         className="primary"
@@ -1030,6 +1055,7 @@ export default function App() {
             {tab === "roadmap" && (
               <>
                 <PlanControls
+                  key={`${data.profile.admission_year}-${data.profile.track}`}
                   data={data}
                   config={config}
                   result={result}
@@ -1400,8 +1426,9 @@ export default function App() {
                           <div>
                             <b>{r.label}</b>
                             <small>
-                              {r.track}과정 · {r.course_count}과목 · 버전{" "}
-                              {r.revision} · {date(r.updated_at)}
+                              {r.admission_year}학번 · {r.track}과정 ·{" "}
+                              {r.course_count}과목 · 버전 {r.revision} ·{" "}
+                              {date(r.updated_at)}
                             </small>
                           </div>
                           <button
@@ -1498,12 +1525,15 @@ export default function App() {
               </details>
             )}
             <div hidden={tab !== "review"}>
-              <ReviewTools work={work} />
+              <ReviewTools work={work} years={config.admission_years} />
             </div>
           </fieldset>
           <footer>
             <span>PATH · 나의 졸업 로드맵</span>
-            <span>2020학번 참고 계획 · 공식 졸업사정은 학교에서 확인</span>
+            <span>
+              {data.profile.admission_year}학번 참고 계획 · 공식 졸업사정은
+              학교에서 확인
+            </span>
           </footer>
         </main>
       </div>

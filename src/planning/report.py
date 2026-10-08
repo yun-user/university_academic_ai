@@ -34,7 +34,7 @@ th,td{{border:1px solid #ccd8d7;padding:8px;text-align:left;overflow-wrap:anywhe
 @media print{{body{{margin:0;padding:0;font-size:10pt}}thead{{display:table-header-group}}tr{{break-inside:avoid}}h2,h3{{break-after:avoid}}}}
 @page{{size:A4 landscape;margin:12mm}}
 </style></head><body><h1>나의 졸업 로드맵 · 참고용 점검 보고서</h1>
-<p>2020학번 · 소프트웨어융합학과 · {escape(profile.track)}과정 · 작성일 {seoul_today().isoformat()}</p>
+<p>{profile.admission_year}학번 · 소프트웨어융합학과 · {escape(profile.track)}과정 · 작성일 {seoul_today().isoformat()}</p>
 <div class="notice">학교의 공식 졸업판정이 아닙니다. 아래 계획은 입력 조건을 모두 만족하며 이수한다는 가정입니다.
 브라우저의 인쇄 메뉴에서 인쇄하거나 PDF로 저장할 수 있습니다. 실제 이수내역과 사용자 확인 근거가 포함될 수 있으므로 공유 범위를 확인하세요.</div>
 {explanation}<h2>현재와 계획 후의 요건 비교</h2>{checks}<h2>학기별 계획</h2>{terms}

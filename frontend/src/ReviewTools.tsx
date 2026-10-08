@@ -118,6 +118,7 @@ export function ExportTools({
   );
 }
 interface RecordItem {
+  admission_year: number | null;
   id?: string;
   created_at?: string;
   kind: string;
@@ -146,6 +147,7 @@ interface Evaluation {
   records: RecordItem[];
 }
 const empty: RecordItem = {
+  admission_year: null,
   kind: "규정 대조",
   case_label: "",
   track: "심화",
@@ -157,7 +159,13 @@ const empty: RecordItem = {
   seconds: null,
   rating: null,
 };
-export default function ReviewTools({ work }: { work: Work }) {
+export default function ReviewTools({
+  work,
+  years,
+}: {
+  work: Work;
+  years: number[];
+}) {
   const [sources, setSources] = useState<{
     status: string;
     reviewed_on: string;
@@ -252,6 +260,27 @@ export default function ReviewTools({ work }: { work: Work }) {
           문서명·페이지 또는 확인 일자를 근거에 적어 주세요.
         </p>
         <div className="form-grid">
+          <label>
+            평가 대상 입학연도
+            <select
+              value={draft.admission_year ?? ""}
+              onChange={(e) =>
+                setDraft({
+                  ...draft,
+                  admission_year: e.target.value
+                    ? Number(e.target.value)
+                    : null,
+                })
+              }
+            >
+              <option value="">미지정</option>
+              {years.map((year) => (
+                <option key={year} value={year}>
+                  {year}학번
+                </option>
+              ))}
+            </select>
+          </label>
           <label>
             평가 종류
             <select
@@ -388,7 +417,9 @@ export default function ReviewTools({ work }: { work: Work }) {
         {evaluations?.records.map((r) => (
           <article className="evidence-item" key={r.id}>
             <b>
-              {r.case_label} · {r.kind} · {r.track}
+              {r.case_label} ·{" "}
+              {r.admission_year ? `${r.admission_year}학번` : "학번 미지정"} ·{" "}
+              {r.kind} · {r.track}
             </b>
             <p>
               {r.verified ? "근거 대조 완료" : "작성 중"} ·{" "}

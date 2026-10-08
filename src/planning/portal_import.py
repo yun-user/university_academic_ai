@@ -142,11 +142,11 @@ def parse_portal_tables(tables: list[dict], catalog: list[Candidate]) -> PortalI
         result.errors.append("전체 이수내역은 최대 500과목까지 지원합니다.")
     result.semester_count = len(periods)
     if result.attempts:
-        result.warnings.append("전체성적조회에는 이수구분·교양영역·설계 인정학점이 없습니다. 분류 제안은 2026 교과과정과 정확히 일치하는 과목에만 제공하며, 수강 당시 기준을 확인해야 합니다. 교양영역·설계학점은 0으로 가져옵니다.")
+        result.warnings.append("전체성적조회에는 이수구분·교양영역·설계 인정학점이 없습니다. 분류 제안은 2026 교과과정과 정확히 일치하는 과목에만 제공하며, 수강 당시 기준을 확인해야 합니다. 교양영역·설계학점·SW데이터 인정학점은 0으로 가져옵니다. 입학연도는 직접 선택하세요.")
         if any(a.category == "미확인" for a in result.attempts):
             result.warnings.append("‘미확인’ 과목은 졸업학점 계산에서 제외됩니다. 아래 표에서 이수구분을 확인해 주세요.")
-        if any(a.year < 2020 for a in result.attempts):
-            result.warnings.append("2020년 이전 수강내역이 있습니다. 입학연도는 성적표에서 추정하지 않습니다. 이 로드맵의 지원 대상인 2020학번과 본인의 적용 기준을 확인하세요.")
+        if any(a.year < 2018 for a in result.attempts):
+            result.warnings.append("2018년 이전 수강내역이 있습니다. 입학연도는 성적표에서 추정하지 않습니다. 선택한 입학연도와 이전 취득학점의 인정 기준을 확인하세요.")
         codes = [a.code for a in result.attempts]
         if len(codes) != len(set(codes)) or any(r["재수강 표시"] for r in result.reviews):
             result.warnings.append("재수강 표시 또는 반복 수강이 있습니다. 원 내역을 보존하고 학교 안내에 따라 ‘재수강’ 표시 행은 ‘인정제외’로 가져왔습니다. 표시가 없는 반복 수강은 학교에서 인정한 한 건과 이전 건의 상태를 확인하세요.")

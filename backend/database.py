@@ -7,6 +7,7 @@ import sqlite3
 from uuid import uuid4
 
 from backend.schemas import SaveProfile
+from src.planning.models import Profile
 
 
 class MissingProfile(Exception):
@@ -36,7 +37,7 @@ class Database:
     def initialize(self):
         with self.connect() as db:
             version = db.execute("PRAGMA user_version").fetchone()[0]
-            if version not in (0, 1, 2):
+            if version not in (0, 1, 2, 3):
                 raise RuntimeError("Unsupported database schema version")
             db.executescript("""
                 CREATE TABLE IF NOT EXISTS profiles (
@@ -84,13 +85,40 @@ class Database:
                     id TEXT PRIMARY KEY, owner_id TEXT NOT NULL, created_at TEXT NOT NULL,
                     data_json TEXT NOT NULL
                 );
-                PRAGMA user_version=2;
             """)
+        if version < 3:
+            self._upgrade_cohorts()
+
+    def _upgrade_cohorts(self):
+        # SQLite cannot alter a CHECK constraint in place. Rebuild only the
+        # parent table in one transaction, preserving IDs, children and owners.
+        with self.connect() as db:
+            db.execute("PRAGMA foreign_keys=OFF")
+            db.execute("BEGIN IMMEDIATE")
+            db.execute("""CREATE TABLE profiles_v3 (
+                id TEXT PRIMARY KEY, label TEXT NOT NULL,
+                revision INTEGER NOT NULL CHECK(revision >= 1),
+                admission_year INTEGER NOT NULL CHECK(admission_year BETWEEN 2018 AND 2026),
+                track TEXT NOT NULL CHECK(track IN ('심화', '일반')),
+                profile_json TEXT NOT NULL, options_json TEXT NOT NULL,
+                goal TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+                settings_json TEXT NOT NULL DEFAULT '{}', owner_id TEXT NOT NULL DEFAULT ''
+            )""")
+            columns = "id,label,revision,admission_year,track,profile_json,options_json,goal,created_at,updated_at,settings_json,owner_id"
+            db.execute(f"INSERT INTO profiles_v3({columns}) SELECT {columns} FROM profiles")
+            db.execute("DROP TABLE profiles")
+            db.execute("ALTER TABLE profiles_v3 RENAME TO profiles")
+            db.execute("CREATE INDEX idx_profile_owner ON profiles(owner_id)")
+            if "sw_data_credits" not in {row[1] for row in db.execute("PRAGMA table_info(course_attempts)")}:
+                db.execute("ALTER TABLE course_attempts ADD COLUMN sw_data_credits REAL NOT NULL DEFAULT 0")
+            if db.execute("PRAGMA foreign_key_check").fetchall():
+                raise RuntimeError("DB 이전 중 참조 무결성 검사 실패. 이전을 취소했습니다.")
+            db.execute("PRAGMA user_version=3")
 
     def list_profiles(self, owner_id=""):
         with self.connect() as db:
             return [dict(row) for row in db.execute("""
-                SELECT p.id,p.label,p.revision,p.track,p.updated_at,
+                SELECT p.id,p.label,p.revision,p.admission_year,p.track,p.updated_at,
                        (SELECT count(*) FROM course_attempts a WHERE a.profile_id=p.id) AS course_count
                 FROM profiles p WHERE p.owner_id=? ORDER BY p.updated_at DESC
             """, (owner_id,))]
@@ -106,7 +134,7 @@ class Database:
             attempt.pop("position")
         return {"id": row["id"], "label": row["label"], "revision": row["revision"],
                 "created_at": row["created_at"], "updated_at": row["updated_at"],
-                "profile": json.loads(row["profile_json"]), "options": json.loads(row["options_json"]),
+                "profile": Profile.model_validate_json(row["profile_json"]).model_dump(), "options": json.loads(row["options_json"]),
                 "goal": row["goal"], "attempts": attempts, **json.loads(row["settings_json"])}
 
     def get_profile(self, profile_id, owner_id=""):
@@ -140,9 +168,9 @@ class Database:
                     data.label, revision, data.profile.admission_year, data.profile.track,
                     data.profile.model_dump_json(), data.options.model_dump_json(), data.goal, now, settings, profile_id))
                 db.execute("DELETE FROM course_attempts WHERE profile_id=?", (profile_id,))
-            db.executemany("INSERT INTO course_attempts VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)", [
+            db.executemany("INSERT INTO course_attempts VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)", [
                 (profile_id, i, a.code, a.name, a.credits, a.category, a.area, a.design_credits,
-                 a.equivalent_code, a.year, a.term, a.grade, a.status) for i, a in enumerate(data.attempts)])
+                 a.equivalent_code, a.year, a.term, a.grade, a.status, a.sw_data_credits) for i, a in enumerate(data.attempts)])
             db.execute("INSERT INTO plan_runs VALUES(?,?,?,?,?,?)", (
                 uuid4().hex, profile_id, revision, now, result["rules_fingerprint"], encode(result)))
             return self._read(db, profile_id, owner_id)

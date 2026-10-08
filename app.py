@@ -410,7 +410,7 @@ def main() -> None:
         settings.environment,
     )
 
-    st.page_link("pages/7_졸업로드맵.py", label="나의 졸업 로드맵 — 2020학번 심화·일반과정", icon="🧭")
+    st.page_link("pages/7_졸업로드맵.py", label="나의 졸업 로드맵 — 2018~2026학번 심화·일반과정", icon="🧭")
 
     try:
         service = _get_search_service()

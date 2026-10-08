@@ -21,7 +21,7 @@ def register_features(app, service, database):
     @app.post("/api/plan/validate")
     def validate(data: PlanningInput):
         candidates = service.candidates(data)
-        rules = load_rules(root, data.profile.track)
+        rules = load_rules(root, data.profile.track, data.profile.admission_year)
         if data.placements is None:
             return {"valid":True, "violations":[], "roadmap":service.plan(data).as_dict()}
         plan, errors = validate_plan(data.attempts, data.profile, rules, candidates, data.options, data.placements)
@@ -73,7 +73,7 @@ def register_features(app, service, database):
     @app.post("/api/export/report")
     def report(data: PlanningInput):
         candidates = service.candidates(data)
-        rules = load_rules(root, data.profile.track)
+        rules = load_rules(root, data.profile.track, data.profile.admission_year)
         plan = service.plan(data, candidates, rules)
         current = audit(data.attempts, data.profile, rules, equivalences=candidates)
         html = render_report(data.profile, current, plan, rules).decode()

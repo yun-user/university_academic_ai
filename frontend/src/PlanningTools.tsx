@@ -316,9 +316,13 @@ export function CandidateTools({
       !draft.name.trim() ||
       !(draft.credits > 0 && draft.credits <= 30) ||
       !draft.source.trim() ||
-      draft.design_credits > draft.credits
+      draft.design_credits > draft.credits ||
+      (draft.sw_data_credits ?? 0) < 0 ||
+      (draft.sw_data_credits ?? 0) > draft.credits
     ) {
-      setError("학수번호·이름·학점·출처와 설계학점을 확인하세요.");
+      setError(
+        "학수번호·이름·학점·출처와 설계/SW·데이터 인정학점을 확인하세요.",
+      );
       return;
     }
     if (candidates.some((c) => c.code === draft.code && c.code !== selected)) {
@@ -393,7 +397,7 @@ export function CandidateTools({
                       ]
                     }
                     <input
-                      value={draft[key]}
+                      value={draft[key] ?? 0}
                       maxLength={key === "source" ? 500 : 150}
                       onChange={(e) =>
                         setDraft({
@@ -425,23 +429,35 @@ export function CandidateTools({
                   ))}
                 </select>
               </label>
-              {(["credits", "area", "design_credits"] as const).map(
-                (key, i) => (
-                  <label key={key}>
-                    {["학점", "전문교양 영역 (0~7)", "설계 인정학점"][i]}
-                    <input
-                      type="number"
-                      value={draft[key]}
-                      min={0}
-                      max={key === "area" ? 7 : 30}
-                      step={key === "area" ? 1 : 0.5}
-                      onChange={(e) =>
-                        setDraft({ ...draft, [key]: Number(e.target.value) })
-                      }
-                    />
-                  </label>
-                ),
-              )}
+              {(
+                [
+                  "credits",
+                  "area",
+                  "design_credits",
+                  "sw_data_credits",
+                ] as const
+              ).map((key, i) => (
+                <label key={key}>
+                  {
+                    [
+                      "학점",
+                      "전문교양 영역 (0~7)",
+                      "설계 인정학점",
+                      "SW·데이터 인정학점",
+                    ][i]
+                  }
+                  <input
+                    type="number"
+                    value={draft[key] ?? 0}
+                    min={0}
+                    max={key === "area" ? 7 : 30}
+                    step={key === "area" ? 1 : 0.5}
+                    onChange={(e) =>
+                      setDraft({ ...draft, [key]: Number(e.target.value) })
+                    }
+                  />
+                </label>
+              ))}
               <label>
                 개설학기
                 <select
@@ -520,7 +536,7 @@ export function SubstitutionTools({
     required_code: "",
     replacement_code: "",
     track: data.profile.track,
-    start_year: 2020,
+    start_year: data.profile.admission_year,
     start_term: 1,
     end_year: null,
     end_term: null,
@@ -625,7 +641,7 @@ export function SubstitutionTools({
             <input
               type="number"
               value={draft.start_year}
-              min={2020}
+              min={2000}
               max={2100}
               onChange={(e) =>
                 setDraft({ ...draft, start_year: Number(e.target.value) })
@@ -652,7 +668,7 @@ export function SubstitutionTools({
             <input
               type="number"
               value={draft.end_year ?? ""}
-              min={2020}
+              min={2000}
               max={2100}
               onChange={(e) =>
                 setDraft({

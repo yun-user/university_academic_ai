@@ -56,6 +56,7 @@ class EvaluationRecord(StrictModel):
     kind: Literal["규정 대조", "LLM 답변", "사용성"]
     case_label: str = Field(min_length=1, max_length=80)
     track: Literal["심화", "일반"]
+    admission_year: int | None = Field(default=None, ge=2018, le=2026)
     expected: str = Field(default="", max_length=2000)
     observed: str = Field(default="", max_length=2000)
     evidence: str = Field(default="", max_length=500)

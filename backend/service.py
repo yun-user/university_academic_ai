@@ -53,7 +53,7 @@ class PlannerService:
 
     def plan(self, data, candidates=None, rules=None):
         candidates = self.candidates(data) if candidates is None else candidates
-        rules = rules or load_rules(self.root, data.profile.track)
+        rules = rules or load_rules(self.root, data.profile.track, data.profile.admission_year)
         if data.placements is None:
             return build_roadmap(data.attempts, data.profile, rules, candidates, data.options)
         roadmap, errors = validate_plan(data.attempts, data.profile, rules, candidates, data.options, data.placements)
@@ -75,13 +75,13 @@ class PlannerService:
             return base
         return [{"key":check.key, "current":check.current, "required":check.required,
                  "missing":check.missing, "status":check.status, "detail":check.detail,
-                 "scope":"2020학번 · " + rules.track + " · 입력 내역 기준",
+                 "scope":f"{rules.admission_year}학번 · " + rules.track + " · 입력 내역 기준",
                  "sources":source_for(check.key), "verification":"학교 최종 확인 필요"}
                 for check in current.checks]
 
     def analyze(self, data, *, consent=False):
         candidates = self.candidates(data)
-        rules = load_rules(self.root, data.profile.track)
+        rules = load_rules(self.root, data.profile.track, data.profile.admission_year)
         current = audit(data.attempts, data.profile, rules, equivalences=candidates)
         if data.placements is not None:
             roadmap = self.plan(data, candidates, rules)
@@ -116,13 +116,13 @@ class PlannerService:
             reasons.append({"code":c.code, "name":c.name, "reason":reason, "source":c.source})
         return {"audit": current.as_dict(), **result_data, "candidate_reasons":reasons,
                 "evidence":self.evidence(current, rules),
-                "rules": {"notices": rules.notices, "sources": rules.sources},
+                "rules": {"admission_year":rules.admission_year, "track":rules.track, "notices": rules.notices, "sources": rules.sources},
                 "rules_fingerprint": source_fingerprint(self.root)}
 
     def chat(self, data):
         # Validate chronology and re-evaluate all input on every question.
         candidates = self.candidates(data)
-        rules = load_rules(self.root, data.profile.track)
+        rules = load_rules(self.root, data.profile.track, data.profile.admission_year)
         baseline = self.plan(data, candidates, rules)
         if not data.consent:
             return {"mode": "local", "answer": "AI 상담을 사용하려면 전송 항목을 확인하고 동의해 주세요. 졸업요건 계산은 동의 없이 사용할 수 있습니다.",

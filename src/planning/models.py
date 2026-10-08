@@ -5,6 +5,7 @@ import re
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from src.planning.cohorts import MIN_ADMISSION_YEAR, MAX_ADMISSION_YEAR
 
 CATEGORIES = ("전공", "전문교양", "교양선택", "특성화교양", "전공기초영어",
               "MSC수학", "MSC과학", "MSC전산", "일반선택", "미확인")
@@ -26,6 +27,7 @@ class Course(StrictModel):
     category: Category = "미확인"
     area: int = Field(default=0, ge=0, le=7)
     design_credits: float = Field(default=0, ge=0, le=30)
+    sw_data_credits: float = Field(default=0, ge=0, le=30)
     equivalent_code: str = ""
 
     @field_validator("code", "equivalent_code")
@@ -54,6 +56,8 @@ class Course(StrictModel):
     def validate_allocation(self):
         if self.design_credits > self.credits:
             raise ValueError("설계 인정학점은 과목 학점보다 클 수 없습니다.")
+        if self.sw_data_credits > self.credits:
+            raise ValueError("SW·데이터 인정학점은 과목 학점보다 클 수 없습니다.")
         if self.design_credits and self.category != "전공":
             raise ValueError("설계 인정학점은 전공 과목에만 입력하세요.")
         if self.area and self.category != "전문교양":
@@ -66,7 +70,7 @@ class Course(StrictModel):
 
 
 class Attempt(Course):
-    # Preserve earlier recognized coursework; admission scope remains 2020 only.
+    # Earlier recognized coursework is retained; admission is selected separately.
     year: int = Field(ge=2000, le=2100)
     term: Literal[1, 2, 3, 4] = 1
     grade: str = "미확정"
@@ -115,9 +119,9 @@ class Substitution(StrictModel):
     required_code: str = Field(min_length=1, max_length=30)
     replacement_code: str = Field(min_length=1, max_length=30)
     track: Literal["심화", "일반"]
-    start_year: int = Field(ge=2020, le=2100)
+    start_year: int = Field(ge=2000, le=2100)
     start_term: Literal[1, 2, 3, 4] = 1
-    end_year: int | None = Field(default=None, ge=2020, le=2100)
+    end_year: int | None = Field(default=None, ge=2000, le=2100)
     end_term: Literal[1, 2, 3, 4] | None = None
     source: str = Field(min_length=1, max_length=500)
     confirmed: bool = False
@@ -149,7 +153,7 @@ class Substitution(StrictModel):
 
 
 class Profile(StrictModel):
-    admission_year: Literal[2020] = 2020
+    admission_year: int = Field(default=2020, ge=MIN_ADMISSION_YEAR, le=MAX_ADMISSION_YEAR)
     track: Literal["심화", "일반"] = "심화"
     required_codes: tuple[str, ...] = ()
     required_list_checked: bool = False
@@ -161,6 +165,8 @@ class Profile(StrictModel):
     recognized_course_scope: Literal["확인 필요", "미충족", "충족"] = "확인 필요"
     specialized_course: Literal["확인 필요", "미충족", "충족"] = "확인 필요"
     basic_english_course: Literal["확인 필요", "미충족", "충족"] = "확인 필요"
+    sw_data_course: Literal["확인 필요", "미충족", "충족"] = "확인 필요"
+    science_course: Literal["확인 필요", "미충족", "충족"] = "확인 필요"
 
     @field_validator("required_codes")
     @classmethod

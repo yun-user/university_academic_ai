@@ -86,7 +86,7 @@ def test_confirmed_substitution_changes_requirement_only_and_is_track_scoped():
     next(x for x in app.text_input if x.label=="원래 필수과목 학수번호").set_value("TEST_OLD")
     next(x for x in app.text_input if x.label=="대체 이수과목 학수번호").set_value("704818")
     next(x for x in app.text_input if x.label=="대체인정 확인 근거").set_value("가상 UI 시험 자료 — 학교 규정 아님")
-    next(x for x in app.checkbox if x.label=="해당 과정·2020학번·수강기간의 대체인정을 학교 자료나 학과에서 확인했습니다").check()
+    next(x for x in app.checkbox if x.label=="선택한 과정·입학연도·수강기간의 대체인정을 학교 자료나 학과에서 확인했습니다").check()
     next(b for b in app.button if b.label=="대체인정 추가").click().run()
     assert not app.exception
     assert not app.error
@@ -134,3 +134,21 @@ def test_workspace_restore_populates_widgets_candidates_and_manual_checks():
     next(b for b in app.button if b.label=="로드맵 계산").click().run()
     assert not app.exception
     assert any("2028년 2학기" in x.value for x in app.markdown)
+
+
+def test_cohort_switch_keeps_courses_and_resets_old_confirmations():
+    app = AppTest.from_file(str(ROOT / "pages/7_졸업로드맵.py"), default_timeout=30).run()
+    app.selectbox(key="planner_admission_year").set_value(2018).run()
+    next(b for b in app.button if b.label == "가상 예제로 시작").click().run()
+    app.selectbox(key="planner_thesis").set_value("충족").run()
+    before = app.session_state["planner_rows"]
+    assert all(row["수강연도"] == 2018 for row in before)
+    def keys():
+        return next(d.value for d in app.dataframe if "점검 항목" in d.value.columns)["점검 항목"].tolist()
+    assert "특성화교양" not in keys() and "SW·데이터활용" not in keys()
+    app.selectbox(key="planner_admission_year").set_value(2022).run()
+    assert not app.exception
+    assert app.session_state["planner_rows"] == before
+    assert app.selectbox(key="planner_thesis").value == "확인 필요"
+    assert "SW·데이터활용" in keys() and "특성화교양" in keys()
+    assert app.metric[0].value == "21"

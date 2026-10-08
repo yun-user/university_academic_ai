@@ -78,8 +78,8 @@ def restore_session(state, workspace: PlannerWorkspace):
     state["planner_substitutions"] = [s.model_dump() for s in profile.substitutions]
     state["planner_candidate_rows"] = candidate_rows(workspace.candidates, workspace.options.excluded_codes)
     state["planner_revision"] = state.get("planner_revision", 0) + 1
-    for name in ("track", "required_list_checked", "thesis", "english", "general_approval",
-                 "design_sequence", "recognized_course_scope", "specialized_course", "basic_english_course"):
+    for name in ("admission_year", "track", "required_list_checked", "thesis", "english", "general_approval",
+                 "design_sequence", "recognized_course_scope", "specialized_course", "basic_english_course", "sw_data_course", "science_course"):
         state["planner_" + name] = getattr(profile, name)
     state["planner_required"] = ", ".join(profile.required_codes)
     for name in ("start_year", "start_term", "semesters", "credit_limit", "assume_in_progress_passed"):

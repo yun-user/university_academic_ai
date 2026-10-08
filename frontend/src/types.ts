@@ -5,6 +5,7 @@ export interface Attempt {
   category: string;
   area: number;
   design_credits: number;
+  sw_data_credits?: number;
   equivalent_code: string;
   year: number;
   term: number;
@@ -23,6 +24,8 @@ export interface Profile {
   recognized_course_scope: string;
   specialized_course: string;
   basic_english_course: string;
+  sw_data_course: string;
+  science_course: string;
   substitutions: Substitution[];
 }
 export interface Substitution {
@@ -131,12 +134,24 @@ export interface Candidate {
   source: string;
   area: number;
   design_credits: number;
+  sw_data_credits?: number;
   equivalent_code: string;
   prerequisites: string[];
   concurrent: string[];
   alternatives: string[];
 }
 export interface Bootstrap {
+  admission_years: number[];
+  cohort_rules: {
+    admission_year: number;
+    track: string;
+    thresholds: Record<string, number>;
+    liberal_cap: number;
+    cohort_range: number[];
+    science_mode: string;
+    msc_detail: string;
+    source: string;
+  }[];
   profile: Profile;
   options: Options;
   categories: string[];
@@ -146,6 +161,7 @@ export interface Bootstrap {
   llm: { configured: boolean; model: string };
 }
 export interface SavedSummary {
+  admission_year: number;
   id: string;
   label: string;
   revision: number;

@@ -1,7 +1,12 @@
 {
   "department": "소프트웨어융합학과",
   "college": "AID융합과학기술대학(구 과학기술대학)",
-  "reviewed_on": "2026-10-01",
+  "reviewed_on": "2026-10-07",
+  "planner_review": {
+    "supported_admission_years": [2018, 2026],
+    "revision": "cohort-selection-v1",
+    "note": "2018~2026 심화·일반 행의 경계를 대조함. 2018 특성화교양 없음, 2022 이후 SW·데이터 9학점, 일반 2024 이후 과학 1set. 2021 이후 심화 학과 지정과목은 별도 확인. 최종 학교 확인을 대체하지 않음."
+  },
   "source": {
     "id": "aid-college-2026",
     "file": "aid_graduation_credits_2026_p8-16.pdf",

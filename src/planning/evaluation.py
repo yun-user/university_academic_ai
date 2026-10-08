@@ -38,6 +38,15 @@ def evaluate_scenarios(root):
         accepted = audit([course("NEW",year=2024,term=2)],profile,rules)
         rejected = audit([course("NEW",year=2024,term=3)],profile,rules)
         record(track+": 대체인정 시작 경계",[True,False],["OLD" in accepted.requirement_codes,"OLD" in rejected.requirement_codes])
+    for year, specialized, sw, science, computing in (
+        (2018, 0, 0, 8, 0), (2019, 3, 0, 8, 0), (2020, 3, 0, 8, 2),
+        (2021, 3, 0, 8, 2), (2022, 3, 9, 8, 2), (2023, 3, 9, 8, 2),
+        (2024, 3, 9, 4, 3), (2025, 3, 9, 4, 3), (2026, 3, 9, 4, 3)):
+        for track in ("심화", "일반"):
+            rules = load_rules(root, track, year)
+            keys = ("특성화교양", "SW·데이터활용", "MSC과학", "MSC전산")
+            record(f"{year}학번 {track}: 학번별 영역 기준", [specialized, sw, 4 if track == "심화" else science,
+                   3 if track == "심화" else computing], [rules.thresholds.get(key, 0) for key in keys])
     return {"kind":"synthetic-implementation-evaluation","real_student_accuracy":None,
             "notice":"합성 사례의 구현 검증입니다. 실제 학생·학교 규정의 정확도 평가가 아닙니다.",
             "total":len(results),"passed":sum(r["passed"] for r in results),"results":results}

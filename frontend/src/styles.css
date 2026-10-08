@@ -12,6 +12,13 @@
   --line: #e3e8e0;
   --paper: #fffefa;
 }
+.cohort-summary {
+  margin-bottom: 22px;
+}
+.cohort-selectors {
+  margin-bottom: 18px;
+  max-width: 520px;
+}
 * {
   box-sizing: border-box;
 }

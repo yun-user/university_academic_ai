@@ -58,6 +58,8 @@ def equivalence_map(courses):
 def audit(attempts: list[Attempt], profile: Profile, rules: RuleSet, *, equivalences=()) -> Audit:
     if profile.track != rules.track:
         raise ValueError("학생 과정과 규정 과정이 일치하지 않습니다.")
+    if profile.admission_year != rules.admission_year:
+        raise ValueError("학생 입학연도와 적용 규정의 입학연도가 일치하지 않습니다.")
     groups = defaultdict(list)
     aliases = equivalence_map([*attempts, *equivalences])
     warnings = []
@@ -81,6 +83,7 @@ def audit(attempts: list[Attempt], profile: Profile, rules: RuleSet, *, equivale
     for a in counted:
         totals[a.category] += a.credits
         totals["설계 인정학점"] += a.design_credits
+        totals["SW·데이터활용"] += a.sw_data_credits
     liberal = sum(totals[k] for k in ("전문교양", "교양선택", "특성화교양"))
     excess = max(0, liberal - rules.liberal_cap)
     totals["총 졸업인정학점"] = sum(a.credits for a in counted) - excess
@@ -132,11 +135,18 @@ def audit(attempts: list[Attempt], profile: Profile, rules: RuleSet, *, equivale
     for area in (4, 5):
         checks.append(Check(f"교양 {area}영역", int(area in areas), 1,
                             "충족" if area in areas else "미충족", "예술과 디자인 / 제2외국어와 한문"))
-    science_codes = ["012102", "012103"]
-    if profile.track == "일반":
-        science_codes += ["012108", "012109"]
-    for code in science_codes:
-        group(f"과학 필수 {code}", {code}, "물리·실험(심화), 물리·화학 및 각 실험(일반). 인정 대체과목은 학과 확인 필요")
+    if rules.science_mode == "one_set":
+        pairs = ({"012102", "012103"}, {"012108", "012109"})
+        # Partial progress lets the planner start a missing pair even when all
+        # numeric credit minima are already met. Mixing two subjects is not a set.
+        progress = max(len(pair & requirement_codes) / len(pair) for pair in pairs)
+        checks.append(Check("과학 실험 포함 1set", progress, 1,
+                            "충족" if progress == 1 else "미충족",
+                            "물리(1)+물리실험(1) 또는 화학(1)+화학실험(1). 같은 계열의 이론·실험 2과목 중 이수 비율(0/0.5/1); 다른 계열을 혼합하면 미충족"))
+    else:
+        science_codes = ["012102", "012103"] + (["012108", "012109"] if rules.science_mode == "both" else [])
+        for code in science_codes:
+            group(f"과학 필수 {code}", {code}, "선택한 학번의 과학 필수·실험 기준. 인정 대체과목은 학과 확인 필요")
     if profile.track == "심화":
         group("기초설계 포함", {"725843"}, "창의적공학설계입문 또는 인정 대체과목")
     group("종합설계(1) 포함", {"704711"}, "2026 이수체계도 1쪽: 과정과 상관없이 종합설계(1)·(2) 모두 이수. 예외·대체승인 별도 확인")
@@ -148,8 +158,13 @@ def audit(attempts: list[Attempt], profile: Profile, rules: RuleSet, *, equivale
                         "빈 목록만으로 필수과목을 모두 이수했다고 가정하지 않습니다."))
     for key, state in [("졸업논문·졸업작품", profile.thesis), *([("어학 인정·제출", profile.english)] if profile.track == "심화" else [])]:
         checks.append(Check(key, int(state == "충족"), 1, state, "사용자 확인 상태. 교과목 취득과 제출·승인은 별개입니다."))
-    manual = [("특성화교양 지정과목 확인", profile.specialized_course, "디자인씽킹·창업과실용법률 중 인정 과목인지 확인. 학점 합계와 별개"),
-              ("전공기초영어 지정과목 확인", profile.basic_english_course, "전공기초영어 I/II 중 인정 과목인지 확인. 학점 합계와 별개")]
+    manual = [("전공기초영어 지정과목 확인", profile.basic_english_course, "전공기초영어 I/II 중 인정 과목인지 확인. 학점 합계와 별개")]
+    if "특성화교양" in rules.thresholds:
+        manual.append(("특성화교양 지정과목 확인", profile.specialized_course, "디자인씽킹·창업과실용법률 중 인정 과목인지 확인. 학점 합계와 별개"))
+    if "SW·데이터활용" in rules.thresholds:
+        manual.append(("SW·데이터 인정과목·중복인정 확인", profile.sw_data_course, "대상 과목과 다른 영역의 중복 인정 범위를 학교에 확인. 총학점에는 같은 과목을 한 번만 합산"))
+    if profile.track == "심화" and profile.admission_year >= 2021:
+        manual.append(("학과 과학 지정과목 확인", profile.science_course, "대학 공통 1set 외 해당 학번의 학과 지정 과학과목·실험을 확인. 학과 표 직접 확인 범위는 2020학번까지"))
     if profile.track == "심화":
         manual += [("설계 이수순서·프로그램 이수체계 확인",profile.design_sequence,"2026 공통 내규 제12·13조: 기초→요소→종합 순서 또는 승인 예외"),
                    ("교양·MSC 인정 범위 확인",profile.recognized_course_scope,"2026 공통 내규 제8조: 사이버·서울캠퍼스 강좌 인정 제한 및 승인 예외")]

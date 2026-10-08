@@ -75,7 +75,7 @@ def make_context(attempts, profile, rules, candidates, options, goal, baseline):
     current = audit(attempts, profile, rules, equivalences=candidates)
     available = eligible_candidates(attempts, candidates, options)
     return {
-        "scope": {"admission_year": 2020, "track": profile.track},
+        "scope": {"admission_year": profile.admission_year, "track": profile.track},
         "student_goal": goal,
         "completed_courses": [{"code": a.code, "year": a.year, "term": a.term} for a in current.counted],
         "in_progress_codes": [a.code for a in attempts if a.status == "수강중"],
