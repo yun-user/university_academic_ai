@@ -117,6 +117,18 @@ def test_private_inputs_not_echoed_and_bad_records_do_not_persist(client, payloa
     assert post(client, "/api/profiles", {**payload, "label": "invalid", "api_key": "PRIVATE KEY"}).status_code == 422
 
 
+@pytest.mark.parametrize("year", [2020, 2025, 0, 2101, 2026.5, None, "PRIVATE YEAR"])
+def test_plan_start_year_error_explains_field_without_echoing_input(client, payload, year):
+    payload["options"]["start_year"] = year
+    response = post(client, "/api/analysis", payload)
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert "계획 시작 연도" in detail and "2026~2100" in detail
+    assert "입학연도" in detail
+    assert "options.start_year" not in detail and "PRIVATE YEAR" not in detail
+    assert client.get("/api/profiles").json() == []
+
+
 def test_unknown_duplicate_and_future_inputs_remain_conservative(client, payload):
     raw = deepcopy(payload)
     raw["attempts"][0]["category"] = "미확인"

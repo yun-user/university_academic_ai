@@ -705,6 +705,9 @@ export default function App() {
                         type="number"
                         min={2026}
                         max={2100}
+                        aria-label="계획 시작 연도"
+                        aria-describedby="plan-start-year-help"
+                        aria-invalid={!Number.isInteger(data.options.start_year) || data.options.start_year < 2026 || data.options.start_year > 2100}
                         value={data.options.start_year}
                         onChange={(e) =>
                           change({
@@ -715,6 +718,9 @@ export default function App() {
                           })
                         }
                       />
+                      <small id="plan-start-year-help" className="muted">
+                        로드맵을 시작할 연도입니다. 입학연도와 별도로 2026~2100 사이의 정수를 입력하세요. 예: 2027년 1학기부터 계획하면 2027.
+                      </small>
                     </label>
                     <label>
                       계획 시작 학기

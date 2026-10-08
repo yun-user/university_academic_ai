@@ -82,7 +82,12 @@ def create_app(db_path=None, root=ROOT, auth_required=None):
     @app.exception_handler(RequestValidationError)
     async def validation_error(request, exc):
         # Do not echo raw records or credentials from malformed submissions.
-        fields = [".".join(map(str, error["loc"][1:])) for error in exc.errors()][:10]
+        fields = [
+            "계획 시작 연도는 2026~2100 사이의 정수로 입력하세요. 입학연도가 아니라 로드맵을 시작할 연도입니다(예: 2027년)."
+            if tuple(error["loc"][-2:]) == ("options", "start_year")
+            else ".".join(map(str, error["loc"][1:]))
+            for error in exc.errors()[:10]
+        ]
         return JSONResponse({"detail": "입력 형식을 확인하세요: " + ", ".join(fields)}, status_code=422)
 
     @app.exception_handler(MissingProfile)
