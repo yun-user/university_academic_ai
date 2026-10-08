@@ -33,7 +33,8 @@ def package(root: Path, output: Path, *, include_web=False):
     paths += ["tests/unit/test_planning_portal.py", "tests/unit/test_course_classification.py", "tests/ui/test_planner_page.py", "tests/ui/test_planner_portal.py"]
     paths += ["docs/images/path-classification-20261008.jpg"]
     if include_web:
-        paths += ["requirements-web.txt", "setup_web.cmd", "start_web.cmd",
+        paths += ["requirements-web.txt", "setup_web.cmd", "start_web.cmd", "scripts/start_web.py",
+                  "tests/unit/test_web_launcher.py",
                   "docs/졸업로드맵_웹앱구조와시연.md", "docs/졸업로드맵_최종보강과검증.md",
                   "tests/integration/test_web_api.py", "tests/integration/test_web_features.py", "tests/integration/test_web_cohorts.py",
                   "frontend/package.json", "frontend/package-lock.json", "frontend/index.html",

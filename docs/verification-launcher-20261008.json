@@ -1,0 +1,30 @@
+{
+  "verified_on": "2026-10-08",
+  "reproduced_error": "WinError 10048: port 8000 already used by the running PATH server",
+  "fixes": [
+    "Reuse a healthy PATH instance after checking health and API identity",
+    "Open browser only after readiness",
+    "Keep failure instructions visible in double-click wrapper",
+    "Preserve existing app data when reusing a server"
+  ],
+  "launcher_tests": {
+    "passed": 12,
+    "seconds": 0.09
+  },
+  "live_checks": {
+    "fresh_server_start": "passed",
+    "exact_user_cmd_repeat": "passed with exit 0",
+    "health_status": "ok",
+    "user_package_python": "3.14.8",
+    "new_root_server_python": "3.12",
+    "os_browser_auto_open": "mock tested; suppressed during automated live checks"
+  },
+  "package": {
+    "file": "graduation-roadmap-launcher-fixed-20261008.zip",
+    "files": 107,
+    "bytes": 9862343,
+    "sha256": "a50b21fb2179c22283ff77ec68eb52b2da8f09dbdb88780734c2a32cde320997",
+    "manifest": "passed"
+  },
+  "privacy": "No private database, transcript, credentials, or runtime included in source bundle"
+}

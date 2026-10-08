@@ -1,14 +1,17 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-if not exist "frontend\dist\index.html" (
-  echo Run setup_web.cmd first.
-  pause
-  exit /b 1
+if not exist ".venv\Scripts\python.exe" (
+  echo Python environment is missing. Run setup_web.cmd in this folder first.
+  goto failed
 )
-if not exist ".venv\Scripts\python.exe" exit /b 1
-echo Open http://127.0.0.1:8000 in your browser.
-echo API documentation: http://127.0.0.1:8000/docs
-echo Press Ctrl+C to stop the server.
-".venv\Scripts\python.exe" -m uvicorn backend.app:app --host 127.0.0.1 --port 8000 --no-access-log
-endlocal
+".venv\Scripts\python.exe" scripts\start_web.py
+if errorlevel 1 goto failed
+exit /b 0
+
+:failed
+echo.
+echo PATH could not start. Read the error above.
+echo For missing dependencies or build files, run setup_web.cmd and retry.
+if not "%PLANNER_NO_PAUSE%"=="1" pause
+exit /b 1
