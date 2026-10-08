@@ -74,6 +74,8 @@ class PlannerService:
                 base += [s for s in rules.sources if "이수체계도" in s or "2019.12" in s]
             if "MSC" in key or "일반과정 어학" in key:
                 base += [s for s in rules.sources if "2019.12" in s]
+            if "어학" in key:
+                base += [s["url"] for s in (rules.language_policy or {}).get("sources", []) if s["id"].startswith("language")]
             return base
         return [{"key":check.key, "current":check.current, "required":check.required,
                  "missing":check.missing, "status":check.status, "detail":check.detail,

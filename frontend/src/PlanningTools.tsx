@@ -768,7 +768,7 @@ export function SubstitutionTools({
   );
 }
 
-export function Checklist({ data, change }: Pick<Props, "data" | "change">) {
+export function Checklist({ data, change, templates = [] }: Pick<Props, "data" | "change"> & { templates?: { id: string; title: string; note: string }[] }) {
   const [title, setTitle] = useState("");
   const items = data.checklist ?? [];
   const today = new Intl.DateTimeFormat("en-CA", {
@@ -784,6 +784,7 @@ export function Checklist({ data, change }: Pick<Props, "data" | "change">) {
         개인 준비 일정입니다. 완료 체크는 학교 승인이나 졸업판정에 영향을 주지
         않습니다.
       </p>
+      {templates.length > 0 && <button className="secondary" disabled={templates.every((t) => items.some((i) => i.id === t.id)) || items.length + templates.filter((t) => !items.some((i) => i.id === t.id)).length > 100} onClick={() => change({checklist: [...items, ...templates.filter((t) => !items.some((i) => i.id === t.id)).map((t) => ({...t, done: false, due: null}))]})}>학과 졸업 준비 항목 추가</button>}
       {items.map((t, i) => (
         <div className="task-row" key={t.id}>
           <label className="check-label">

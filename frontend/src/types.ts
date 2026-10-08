@@ -19,6 +19,7 @@ export interface Profile {
   required_list_checked: boolean;
   thesis: string;
   english: string;
+  language?: LanguageRecord | null;
   general_approval: string;
   design_sequence: string;
   recognized_course_scope: string;
@@ -27,6 +28,21 @@ export interface Profile {
   sw_data_course: string;
   science_course: string;
   substitutions: Substitution[];
+}
+export interface LanguageRecord {
+  exam: string;
+  score: string;
+  expires_on: string | null;
+  submitted_on: string | null;
+  submission_confirmed: boolean;
+}
+export interface DepartmentGuidance {
+  reviewed_on: string;
+  scope: string;
+  sources: { id: string; title: string; url: string }[];
+  exams: { id: string; label: string; requirement: string; maximum?: number; levels?: string[] }[];
+  notes: string[];
+  tasks: { id: string; title: string; note: string }[];
 }
 export interface Substitution {
   required_code: string;
@@ -141,6 +157,7 @@ export interface Candidate {
   alternatives: string[];
 }
 export interface Bootstrap {
+  department_guidance: DepartmentGuidance;
   admission_years: number[];
   cohort_rules: {
     admission_year: number;

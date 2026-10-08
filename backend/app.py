@@ -22,7 +22,8 @@ from src.planning.models import CATEGORIES, GRADES, STATUSES, PlanOptions, Profi
 from src.planning.portal_import import parse_portal_text
 from src.planning.workspace import seoul_today
 from src.planning.cohorts import SUPPORTED_ADMISSION_YEARS
-from src.planning.rules import load_rules
+from src.planning.rules import load_rules, load_department_guidance
+from src.planning.language import assess_language
 
 ROOT = Path(__file__).resolve().parents[1]
 ALLOWED_ORIGINS = {f"http://{host}:{port}" for host in ("127.0.0.1", "localhost") for port in (8000, 5173)}
@@ -142,6 +143,7 @@ def create_app(db_path=None, root=ROOT, auth_required=None):
         today = seoul_today()
         options = PlanOptions(start_year=max(2018, today.year + (today.month >= 8)), start_term=1)
         return {"profile": Profile().model_dump(), "options": options.model_dump(),
+                "department_guidance": load_department_guidance(root),
                 "admission_years": SUPPORTED_ADMISSION_YEARS,
                 "cohort_rules": [{"admission_year": year, "track": track,
                     "thresholds": (r := load_rules(root, track, year)).thresholds,
@@ -155,6 +157,13 @@ def create_app(db_path=None, root=ROOT, auth_required=None):
     @app.get("/api/demo")
     def demo(admission_year: int = Query(default=2020, ge=2018, le=2026)):
         return {"attempts": [a.model_dump() for a in sample_transcript(admission_year)]}
+
+    @app.post("/api/language/check")
+    def language_check(profile: Profile):
+        result = assess_language(profile.language, load_department_guidance(root))
+        if profile.track == "일반" and profile.english != "충족":
+            result = {**result, "status": "확인 필요", "detail": "일반과정은 학과 적용·예외 확인 필요. 아래는 심화 표 참고 대조입니다. " + result["detail"]}
+        return result
 
     @app.get("/api/transcript/template")
     def template():

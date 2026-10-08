@@ -153,6 +153,7 @@ fieldset.workspace {
 fieldset.workspace:disabled {
   opacity: 0.75;
 }
+fieldset.workspace.chat-awaiting:disabled { opacity: 1; }
 details {
   margin-top: 18px;
 }
@@ -396,13 +397,41 @@ button.secondary:hover {
   min-width: 0;
 }
 .topbar {
-  height: 73px;
+  min-height: 96px;
   border-bottom: 1px solid var(--line);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 45px;
   background: #fcfdf8;
+}
+
+.advisor-launcher { position: relative; flex: none; display: flex; align-items: center; padding-right: 4px; }
+.advisor-launcher-open { display: flex; align-items: center; gap: 9px; background: transparent; border: 0; padding: 0; color: #244b40; }
+.advisor-launcher-open:hover .advisor-speech, .advisor-launcher-open:focus-visible .advisor-speech { background: #e3efcf; }
+.advisor-speech { position: relative; font-size: 12px; font-weight: 650; white-space: nowrap; background: #f1f6e8; border: 1px solid #ccdcb7; padding: 10px 12px; border-radius: 12px 12px 2px 12px; }
+.advisor-character { width: 66px; height: 66px; overflow: visible; }
+.advisor-wave { transform-origin: 50px 41px; animation: advisor-wave 1.6s steps(3, end) infinite; }
+.advisor-motion { position: absolute; right: 15px; bottom: -8px; font-size: 10px; min-height: 24px; padding: 2px 5px; }
+.advisor-launcher.paused * { animation-play-state: paused !important; }
+@keyframes advisor-wave { 0%, 100% { transform: rotate(-12deg); } 50% { transform: rotate(17deg); } }
+.language-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.language-table caption { text-align: left; padding: 8px 0; color: #657560; }
+.language-table th, .language-table td { text-align: left; padding: 11px 12px; border-bottom: 1px solid var(--line); }
+.language-table th { font-weight: 550; }
+.language-table thead { background: #f1f5ec; }
+.language-panel .form-grid { margin-top: 20px; }
+.language-result { margin-top: 16px; padding: 18px; background: #f1f6e8; border-radius: 12px; line-height: 1.7; }
+.department-notes { margin-top: 20px; line-height: 1.8; }
+.department-notes li { margin-bottom: 10px; }
+.source-links { display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+@media (max-width: 1100px) { .topbar { padding: 12px 24px; gap: 16px; flex-wrap: wrap; } .topbar-right { gap: 12px; } }
+@media (max-width: 680px) {
+  .topbar-right { width: 100%; flex-wrap: wrap; justify-content: flex-end; }
+  .advisor-launcher { margin-left: auto; }
+  .advisor-character { width: 56px; height: 56px; }
+  .advisor-speech { font-size: 11px; padding: 8px 10px; }
+  .language-table th, .language-table td { padding: 8px 5px; font-size: 11px; }
 }
 .breadcrumb {
   font-size: 11px;
@@ -1120,6 +1149,16 @@ main {
 .chat-composer button {
   font-size: 12px;
 }
+.chat-loading { display: flex; align-items: center; gap: 14px; min-height: 90px; border: 1px solid #d5e3d7; }
+.chat-loading-pixel { flex: none; width: 42px; height: 42px; animation: pixel-bob 1.2s steps(3, end) infinite; }
+.chat-loading-eyes { transform-box: fill-box; transform-origin: center; animation: pixel-blink 3s step-end infinite; }
+.chat-loading strong { color: #245e4d; line-height: 1.8; }
+.chat-loading p { margin-top: 6px; color: #64746b; font-size: 12px; }
+.chat-loading-dots { display: inline-flex; gap: 4px; margin-left: 8px; vertical-align: middle; }
+.chat-loading-dots i { width: 4px; height: 4px; background: #648a77; animation: pixel-dot 1.2s steps(2, end) infinite; }
+.chat-loading-dots i:nth-child(2) { animation-delay: .2s; }
+.chat-loading-dots i:nth-child(3) { animation-delay: .4s; }
+.chat-composer #chat-keyboard-help { color: #64746b; line-height: 1.65; }
 .save-form {
   display: flex;
   align-items: end;

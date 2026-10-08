@@ -225,7 +225,7 @@ with st.expander("학교에서 확인한 대체과목 인정", expanded=False):
     st.caption("대체인정 설정은 이수내역 CSV에 포함되지 않습니다. 로드맵 계산 후 JSON 결과에 함께 저장됩니다.")
 try:
     profile = Profile(admission_year=admission_year, track=track, required_codes=tuple(required.split(",")), required_list_checked=checked,
-                      thesis=thesis, english=english, substitutions=tuple(st.session_state.planner_substitutions),**manual_checks)
+                      thesis=thesis, english=english, language=st.session_state.get("planner_language"), substitutions=tuple(st.session_state.planner_substitutions),**manual_checks)
 except ValueError as exc:
     st.error(str(exc))
     st.stop()

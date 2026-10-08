@@ -82,6 +82,7 @@ def restore_session(state, workspace: PlannerWorkspace):
                  "design_sequence", "recognized_course_scope", "specialized_course", "basic_english_course", "sw_data_course", "science_course"):
         state["planner_" + name] = getattr(profile, name)
     state["planner_required"] = ", ".join(profile.required_codes)
+    state["planner_language"] = profile.language.model_dump(mode="json") if profile.language else None
     for name in ("start_year", "start_term", "semesters", "credit_limit", "assume_in_progress_passed"):
         state["planner_" + name] = getattr(workspace.options, name)
     state["planner_loaded_fingerprint"] = workspace.rules_fingerprint

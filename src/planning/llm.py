@@ -80,7 +80,10 @@ def make_context(attempts, profile, rules, candidates, options, goal, baseline):
         "completed_courses": [{"code": a.code, "year": a.year, "term": a.term} for a in current.counted],
         "in_progress_codes": [a.code for a in attempts if a.status == "수강중"],
         "checks": [{"key": c.key, "current": c.current, "required": c.required,
-                    "missing": c.missing, "status": c.status} for c in current.checks],
+                    "missing": c.missing, "status": c.status,
+                    **({"detail": c.detail} if "어학" in c.key else {})} for c in current.checks],
+        "language_requirements": {"exams": (rules.language_policy or {}).get("exams", []),
+                                  "notes": (rules.language_policy or {}).get("notes", [])},
         "options": options.model_dump(),
         "candidates": [c.model_dump(exclude={"source"}) for c in available],
         "baseline_plan": [{"year": s.year, "term": s.term, "codes": [c.code for c in s.courses]}

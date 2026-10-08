@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+from datetime import date
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -153,6 +154,19 @@ class Substitution(StrictModel):
                 and (self.end_year is None or period <= academic_period(self.end_year, self.end_term)))
 
 
+class LanguageRecord(StrictModel):
+    exam: Literal["TOEIC", "TEPS", "NEW_TEPS", "TOEFL_IBT", "TOEIC_SPEAKING", "OPIC", "TEPS_SPEAKING", "HSK4", "JPT", "OTHER"] = "TOEIC"
+    score: str = Field(default="", max_length=30)
+    expires_on: date | None = None
+    submitted_on: date | None = None
+    submission_confirmed: bool = False
+
+    @field_validator("score")
+    @classmethod
+    def normalize_score(cls, value):
+        return value.strip().upper()
+
+
 class Profile(StrictModel):
     admission_year: int = Field(default=2020, ge=MIN_ADMISSION_YEAR, le=MAX_ADMISSION_YEAR)
     track: Literal["심화", "일반"] = "심화"
@@ -160,6 +174,7 @@ class Profile(StrictModel):
     required_list_checked: bool = False
     thesis: Literal["확인 필요", "미충족", "충족"] = "확인 필요"
     english: Literal["확인 필요", "미충족", "충족"] = "확인 필요"
+    language: LanguageRecord | None = None
     substitutions: tuple[Substitution, ...] = Field(default=(), max_length=100)
     general_approval: Literal["확인 필요", "미충족", "충족"] = "확인 필요"
     design_sequence: Literal["확인 필요", "미충족", "충족"] = "확인 필요"

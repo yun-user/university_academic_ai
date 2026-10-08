@@ -7,6 +7,7 @@ from dataclasses import asdict, dataclass
 from src.planning.models import Attempt, MAJOR_CATEGORIES, PASS_GRADES, Profile
 from src.planning.rules import RuleSet
 from src.planning.classification import is_english_bonus
+from src.planning.language import assess_language
 
 
 @dataclass
@@ -172,8 +173,13 @@ def audit(attempts: list[Attempt], profile: Profile, rules: RuleSet, *, equivale
     checks.append(Check("개인 필수목록 확인", int(profile.required_list_checked), 1,
                         "충족" if profile.required_list_checked else "확인 필요",
                         "빈 목록만으로 필수과목을 모두 이수했다고 가정하지 않습니다."))
-    for key, state in [("졸업논문·졸업작품", profile.thesis), *([("어학 인정·제출", profile.english)] if profile.track == "심화" else [])]:
-        checks.append(Check(key, int(state == "충족"), 1, state, "사용자 확인 상태. 교과목 취득과 제출·승인은 별개입니다."))
+    checks.append(Check("졸업논문·졸업작품", int(profile.thesis == "충족"), 1, profile.thesis,
+                        "사용자 확인 상태. 교과목 취득과 제출·승인은 별개입니다."))
+    language = assess_language(profile.language, rules.language_policy) if profile.language else None
+    if profile.track == "심화":
+        state = language["status"] if language else profile.english
+        detail = language["detail"] if language else "사용자 확인 상태. 공인시험 기준점수·유효기간 내 성적표 제출을 함께 확인하세요."
+        checks.append(Check("어학 인정·제출", int(state == "충족"), 1, state, detail))
     manual = [("전공기초영어 지정과목 확인", profile.basic_english_course, "전공기초영어 I/II 중 인정 과목인지 확인. 학점 합계와 별개")]
     if "특성화교양" in rules.thresholds:
         manual.append(("특성화교양 지정과목 확인", profile.specialized_course, "디자인씽킹·창업과실용법률 중 인정 과목인지 확인. 학점 합계와 별개"))
@@ -186,7 +192,13 @@ def audit(attempts: list[Attempt], profile: Profile, rules: RuleSet, *, equivale
                    ("교양·MSC 인정 범위 확인",profile.recognized_course_scope,"2026 공통 내규 제8조: 사이버·서울캠퍼스 강좌 인정 제한 및 승인 예외")]
     else:
         manual.append(("일반과정 적용·변경 승인 확인",profile.general_approval,"2026 공통 내규 제5조의 과정 변경 예외·승인 절차 확인. 비교 계산만으로 과정 변경이 되지 않음"))
-        manual.append(("일반과정 어학요건 확인",profile.english,"2019.12 학과 내규 표5는 일반과정도 어학 제출 대상으로 기술. 현재 적용·예외를 학교에 확인해야 함"))
+        state = profile.english
+        if language and state == "충족":
+            state = language["status"]
+        detail = "2019.12 학과 내규 표5는 일반과정도 어학 제출 대상으로 기술. 홈페이지 표는 심화 기준이므로 일반과정 적용·예외를 학교에 확인해야 함"
+        if language:
+            detail += "; 심화 기준 참고 대조: " + language["detail"]
+        manual.append(("일반과정 어학요건 확인",state,detail))
     for key, state, detail in manual:
         checks.append(Check(key, int(state == "충족"), 1, state, "사용자 확인: " + detail))
     checks.append(Check("학교 최종 졸업사정", 0, 1, "확인 필요", "등록학기·평점·과정별 세부 인정 등은 학교에서 최종 확인"))

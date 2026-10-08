@@ -20,6 +20,7 @@ class RuleSet:
     cohort_range: tuple[int, int] = (2019, 2021)
     science_mode: str = "physics"
     msc_detail: str = ""
+    language_policy: dict | None = None
 
 
 def _verify(root, source):
@@ -29,6 +30,14 @@ def _verify(root, source):
         raise ValueError("규정 원본 경로가 올바르지 않습니다.")
     if hashlib.sha256(path.read_bytes()).hexdigest() != source["sha256"]:
         raise ValueError("규정 원본이 바뀌었습니다. 대조 검토 후 계산을 다시 실행하세요.")
+
+
+def load_department_guidance(project_root: Path) -> dict:
+    root = project_root / "config/reviewed_rules"
+    data = json.loads((root / "department_guidance.json").read_text(encoding="utf-8"))
+    for source in data["sources"]:
+        _verify(root, source)
+    return data
 
 
 def load_rules(project_root: Path, track: str, admission_year: int = 2020) -> RuleSet:
@@ -72,6 +81,8 @@ def load_rules(project_root: Path, track: str, admission_year: int = 2020) -> Ru
     if review:
         sources += ("사용자 제공 이수체계도.pdf 1쪽 · 2026 수강연도부터 학번 무관 적용; 2쪽은 권장 순서",
                     "소프트웨어융합학과 프로그램 이수내규 2019.12 · 수업 제8조, 공학교육인증 운영 제5조 · 최신 개정과 대조 필요")
+    guidance = load_department_guidance(project_root)
+    sources += tuple(s["url"] + " · " + s["title"] for s in guidance["sources"])
     return RuleSet(track, thresholds, cohort["liberal_cap"], sources, (
         f"{admission_year}학번·소프트웨어융합학과·단일전공 신입학 기준의 참고 계산입니다. 편입·전과·복수전공은 별도 확인이 필요합니다.",
         "단과대학 기준은 2026 교과과정 책자(안)를 사용합니다. 최종 확정본·학과 확인 전에는 공식 졸업판정으로 사용할 수 없습니다.",
@@ -85,4 +96,4 @@ def load_rules(project_root: Path, track: str, admission_year: int = 2020) -> Ru
         "2021학번 이후 심화는 대학 공통의 실험 포함 과학 1set를 점검합니다. 학과 표의 직접 확인 범위는 2020학번까지이므로 과학 지정과목은 별도 확인합니다.",
     ), msc_computing_cap=None,
        admission_year=admission_year, cohort_range=(cohort["from"], cohort["to"]),
-       science_mode=science_mode, msc_detail=cohort["msc_detail"])
+       science_mode=science_mode, msc_detail=cohort["msc_detail"], language_policy=guidance)

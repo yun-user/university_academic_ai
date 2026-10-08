@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   BookOpen,
@@ -25,7 +25,10 @@ import CourseEditor from "./CourseEditor";
 import ClassificationReview from "./ClassificationReview";
 import CohortSummary from "./CohortSummary";
 import PixelGuide from "./PixelGuide";
+import AdvisorLauncher from "./AdvisorLauncher";
+import LanguageRequirements from "./LanguageRequirements";
 import { resizeSemesters } from "./planOptions";
+import { isChatSendKey } from "./chatInput";
 import {
   PlanControls,
   CandidateTools,
@@ -58,7 +61,7 @@ const tabs = [
 ];
 const manualFields = [
   ["thesis", "졸업논문·졸업작품"],
-  ["english", "어학 인정·제출 및 적용 확인"],
+  ["english", "어학 적용·예외 확인 (성적 입력 시 자동 대조 우선)"],
   ["specialized_course", "특성화교양 지정과목"],
   ["basic_english_course", "전공기초영어 지정과목"],
   ["sw_data_course", "SW·데이터 과목·중복인정 확인 (2022학번부터)"],
@@ -130,6 +133,9 @@ export default function App() {
   const [consent, setConsent] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [question, setQuestion] = useState("");
+  const [pendingQuestion, setPendingQuestion] = useState<string | null>(null);
+  const chatRequest = useRef(false);
+  const composingQuestion = useRef(false);
   const [records, setRecords] = useState<SavedSummary[]>([]);
   const [selected, setSelected] = useState<{
     id: string;
@@ -193,6 +199,16 @@ export default function App() {
     target?.focus({ preventScroll: true });
     target?.scrollIntoView({ block: "center" });
   }, [error]);
+  useEffect(() => {
+    if (pendingQuestion !== null) {
+      document.getElementById("chat-loading-status")?.scrollIntoView({ block: "nearest" });
+    }
+  }, [pendingQuestion]);
+  useEffect(() => {
+    if (messages.length) {
+      document.getElementById(`chat-reply-${messages.length - 1}`)?.scrollIntoView({ block: "start" });
+    }
+  }, [messages.length]);
   function navigate(next: string, target = "page-title") {
     setTab(next);
     setScrollTarget({ id: target });
@@ -356,21 +372,28 @@ export default function App() {
     });
   }
   async function ask() {
-    if (!data || !question.trim() || !consent) return;
+    if (!data || !question.trim() || !consent || !config?.llm.configured || busy || chatRequest.current) return;
     const asked = question.trim();
-    await work("AI가 현재 이수 상태를 확인하고 있어요…", async () => {
-      const reply = await api<ChatReply>("/chat", "POST", {
-        ...data,
-        question: asked,
-        consent,
-        history: messages
-          .filter((m) => m.mode === "llm")
-          .slice(-6)
-          .map((m) => ({ question: m.question, answer: m.answer })),
+    chatRequest.current = true;
+    setPendingQuestion(asked);
+    try {
+      await work("AI가 현재 이수 상태를 확인하고 있어요…", async () => {
+        const reply = await api<ChatReply>("/chat", "POST", {
+          ...data,
+          question: asked,
+          consent,
+          history: messages
+            .filter((m) => m.mode === "llm")
+            .slice(-6)
+            .map((m) => ({ question: m.question, answer: m.answer })),
+        });
+        setMessages((previous) => [...previous, { ...reply, question: asked }]);
+        setQuestion("");
       });
-      setMessages([...messages, { ...reply, question: asked }]);
-      setQuestion("");
-    });
+    } finally {
+      setPendingQuestion(null);
+      chatRequest.current = false;
+    }
   }
   async function importText(kind: string, text: string) {
     await work("성적표를 읽고 있어요…", async () => {
@@ -400,7 +423,7 @@ export default function App() {
       <div>
         <b>AI 상담에 사용할 정보</b>
         <p>
-          OpenAI로 과목 코드·이수 시기·요건 계산값·희망 사항·질문과 최근 대화
+          OpenAI로 과목 코드·이수 시기·요건 계산값·어학 시험과 점수 및 제출 확인 결과·희망 사항·질문과 최근 대화
           6개를 보냅니다. 성적 등급과 학교 계정 정보는 보내지 않습니다. 질문에
           이름·학번·비밀번호를 쓰지 마세요.
         </p>
@@ -498,6 +521,7 @@ export default function App() {
             <button className="secondary small" disabled={Boolean(busy)} onClick={() => navigate("saved")}>
               <Save size={15} /> 저장 관리
             </button>
+            <AdvisorLauncher disabled={Boolean(busy)} onOpen={() => navigate("advisor", "advisor-question")} />
           </div>
         </header>
         <main>
@@ -561,7 +585,7 @@ export default function App() {
               </div>
             )}
           </div>
-          <fieldset className="workspace" disabled={Boolean(busy)}>
+          <fieldset className={`workspace${pendingQuestion !== null ? " chat-awaiting" : ""}`} disabled={Boolean(busy)}>
             {tab === "overview" && (
               <>
                 <CohortSummary
@@ -887,6 +911,7 @@ export default function App() {
                     조건 적용하고 계산 <ArrowRight size={16} />
                   </button>
                 </section>
+                <LanguageRequirements data={data} guidance={config.department_guidance} change={change} work={work} />
                 {result && (
                   <section className="panel">
                     <h2 id="graduation-checks" tabIndex={-1}>전체 졸업요건 점검</h2>
@@ -1309,7 +1334,7 @@ export default function App() {
                       대화는 DB에 저장하지 않아요
                     </span>
                   </div>
-                  {messages.length === 0 && (
+                  {messages.length === 0 && pendingQuestion === null && (
                     <div className="chat-empty">
                       <MessageCircle size={32} />
                       <h3>궁금한 점을 물어보세요</h3>
@@ -1332,7 +1357,7 @@ export default function App() {
                   )}
                   <div aria-live="polite">
                     {messages.map((m, i) => (
-                      <div className="chat-turn" key={i}>
+                      <div className="chat-turn" id={`chat-reply-${i}`} key={i} tabIndex={-1}>
                         <div className="user-message">{m.question}</div>
                         <div className="assistant-message">
                           <span
@@ -1356,8 +1381,26 @@ export default function App() {
                       </div>
                     ))}
                   </div>
+                  {pendingQuestion !== null && (
+                    <div className="chat-turn" id="chat-pending">
+                      <div className="user-message">{pendingQuestion}</div>
+                      <div id="chat-loading-status" className="assistant-message chat-loading" role="status" aria-live="polite">
+                        <svg className="chat-loading-pixel" viewBox="0 0 32 32" shapeRendering="crispEdges" aria-hidden="true">
+                          <path fill="#245e4d" d="M14 1h4v5h-4zM6 7h20v3h3v15h-3v3H6v-3H3V10h3z" />
+                          <path fill="#dcebc6" d="M7 11h18v12H7z" />
+                          <path className="chat-loading-eyes" fill="#245e4d" d="M10 14h4v5h-4zM19 14h4v5h-4z" />
+                          <path fill="#dfb250" d="M14 0h4v3h-4zM13 24h6v2h-6z" />
+                        </svg>
+                        <div>
+                          <strong>AI가 답변을 준비하고 있어요<span className="chat-loading-dots" aria-hidden="true"><i /><i /><i /></span></strong>
+                          <p>로딩 중 · 질문과 졸업요건을 확인하고 있습니다.</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   <form
                     className="chat-composer"
+                    aria-busy={pendingQuestion !== null}
                     onSubmit={(e) => {
                       e.preventDefault();
                       void ask();
@@ -1366,20 +1409,39 @@ export default function App() {
                     <textarea
                       id="advisor-question"
                       aria-label="AI에게 질문"
+                      aria-describedby="chat-keyboard-help"
                       value={question}
                       onChange={(e) => setQuestion(e.target.value)}
+                      onCompositionStart={() => { composingQuestion.current = true; }}
+                      onCompositionEnd={() => { composingQuestion.current = false; }}
+                      onBlur={() => { composingQuestion.current = false; }}
+                      onKeyDown={(e) => {
+                        if (!isChatSendKey(e.nativeEvent, composingQuestion.current)) return;
+                        e.preventDefault();
+                        if (!validConsensus) {
+                          document.getElementById("chat-keyboard-help")?.scrollIntoView({ block: "nearest" });
+                          return;
+                        }
+                        void ask();
+                      }}
                       rows={3}
                       maxLength={1000}
                       placeholder="예: 지금 상태에서 다음 학기에 우선 들을 과목을 설명해 주세요."
                     />
                     <div>
-                      <small>{question.length} / 1,000</small>
+                      <small id="chat-keyboard-help">
+                        Enter 전송 · Shift+Enter 줄바꿈<br />
+                        {question.length} / 1,000
+                        {!validConsensus && <><br />AI 연결 설정과 위의 정보 전송 동의를 확인해 주세요.</>}
+                      </small>
                       <button
                         className="primary"
                         type="submit"
-                        disabled={!validConsensus || !question.trim()}
+                        disabled={!validConsensus || !question.trim() || pendingQuestion !== null}
                       >
-                        <Send size={16} /> AI에게 질문
+                        {pendingQuestion !== null
+                          ? <><LoaderCircle size={16} className="spin" /> 답변 준비 중</>
+                          : <><Send size={16} /> AI에게 질문</>}
                       </button>
                     </div>
                   </form>
@@ -1389,7 +1451,7 @@ export default function App() {
             {tab === "saved" && (
               <>
                 <ExportTools data={data} restore={restoreBackup} work={work} />
-                <Checklist data={data} change={change} />
+                <Checklist data={data} change={change} templates={config.department_guidance.tasks} />
                 <section className="panel">
                   <div className="section-heading">
                     <h2>현재 계획 저장</h2>
