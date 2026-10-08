@@ -83,7 +83,7 @@ def create_app(db_path=None, root=ROOT, auth_required=None):
     async def validation_error(request, exc):
         # Do not echo raw records or credentials from malformed submissions.
         fields = [
-            "계획 시작 연도는 2026~2100 사이의 정수로 입력하세요. 입학연도가 아니라 로드맵을 시작할 연도입니다(예: 2027년)."
+            "계획 시작 연도는 2018~2100 사이의 정수로 입력하세요. 입학연도가 아니라 로드맵을 시작할 연도입니다(예: 2027년)."
             if tuple(error["loc"][-2:]) == ("options", "start_year")
             else ".".join(map(str, error["loc"][1:]))
             for error in exc.errors()[:10]
@@ -140,7 +140,7 @@ def create_app(db_path=None, root=ROOT, auth_required=None):
     def bootstrap():
         connection = saved_connection(root)
         today = seoul_today()
-        options = PlanOptions(start_year=max(2026, today.year + (today.month >= 8)), start_term=1)
+        options = PlanOptions(start_year=max(2018, today.year + (today.month >= 8)), start_term=1)
         return {"profile": Profile().model_dump(), "options": options.model_dump(),
                 "admission_years": SUPPORTED_ADMISSION_YEARS,
                 "cohort_rules": [{"admission_year": year, "track": track,

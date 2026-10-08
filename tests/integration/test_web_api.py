@@ -117,16 +117,39 @@ def test_private_inputs_not_echoed_and_bad_records_do_not_persist(client, payloa
     assert post(client, "/api/profiles", {**payload, "label": "invalid", "api_key": "PRIVATE KEY"}).status_code == 422
 
 
-@pytest.mark.parametrize("year", [2020, 2025, 0, 2101, 2026.5, None, "PRIVATE YEAR"])
+@pytest.mark.parametrize("year", [2017, 2000, 0, 2101, 2018.5, None, "PRIVATE YEAR"])
 def test_plan_start_year_error_explains_field_without_echoing_input(client, payload, year):
     payload["options"]["start_year"] = year
     response = post(client, "/api/analysis", payload)
     assert response.status_code == 422
     detail = response.json()["detail"]
-    assert "계획 시작 연도" in detail and "2026~2100" in detail
+    assert "계획 시작 연도" in detail and "2018~2100" in detail
     assert "입학연도" in detail
     assert "options.start_year" not in detail and "PRIVATE YEAR" not in detail
     assert client.get("/api/profiles").json() == []
+
+
+@pytest.mark.parametrize("year", [2018, 2020, 2025])
+def test_plan_before_2026_can_calculate_and_persist(client, payload, year):
+    payload["attempts"] = []
+    payload["profile"]["admission_year"] = 2018
+    payload["options"].update(start_year=year, start_term=1, semesters=2)
+    payload["candidates"] = []
+    response = post(client, "/api/analysis", payload)
+    assert response.status_code == 200
+    periods = response.json()["roadmap"]["semesters"]
+    assert [(p["year"], p["term"]) for p in periods] == [(year, 1), (year, 2)]
+    saved = post(client, "/api/profiles", {**payload, "label": "Synthetic early plan"})
+    assert saved.status_code == 201
+    restored = client.get("/api/profiles/" + saved.json()["id"]).json()
+    assert restored["options"]["start_year"] == year
+
+
+def test_early_plan_does_not_use_later_earned_credits(client, payload):
+    payload["options"]["start_year"] = 2018
+    response = post(client, "/api/analysis", payload)
+    assert response.status_code == 422
+    assert "마지막 학기보다 뒤" in response.json()["detail"]
 
 
 def test_unknown_duplicate_and_future_inputs_remain_conservative(client, payload):

@@ -5,6 +5,15 @@ from streamlit.testing.v1 import AppTest
 ROOT = Path(__file__).resolve().parents[2]
 
 
+def test_plan_start_year_supports_2018():
+    app = AppTest.from_file(str(ROOT / "pages/7_졸업로드맵.py"), default_timeout=30).run()
+    field = app.number_input(key="planner_start_year")
+    field.set_value(2018).run()
+    assert not app.exception
+    assert app.number_input(key="planner_start_year").value == 2018
+    assert not app.error
+
+
 def test_llm_opt_in_render_and_no_repeat_calls_on_rerun(monkeypatch):
     from src.planning import llm, llm_ui
     monkeypatch.setattr(llm_ui,"saved_connection",lambda _:llm.Connection())

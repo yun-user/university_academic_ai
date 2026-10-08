@@ -262,7 +262,7 @@ with st.expander("추천 후보·개설 학기·선수과목 조정", expanded=F
             "선택대안학수번호":st.column_config.TextColumn(help="쉼표로 구분. 중 하나를 이미 이수·수강중이면 다른 대안은 자동 추천에서 제외. 동일과목 인정과는 별개"),
         })
 a,b,c,d = st.columns(4)
-start_year = a.number_input("계획 시작 연도", min_value=2026,max_value=2100,value=max(2026,seoul_today().year+1),key="planner_start_year")
+start_year = a.number_input("계획 시작 연도", min_value=2018,max_value=2100,value=max(2018,seoul_today().year+1),key="planner_start_year")
 start_term = b.selectbox("계획 시작 학기", [1,2],key="planner_start_term")
 count = c.number_input("계획할 정규학기 수", min_value=1,max_value=12,value=4,key="planner_semesters")
 limit = d.number_input("학기당 계획 학점 한도", min_value=1.0,max_value=30.0,value=18.0,step=0.5,key="planner_credit_limit")

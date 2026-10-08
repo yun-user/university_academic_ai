@@ -176,7 +176,7 @@ class Profile(StrictModel):
 
 
 class PlanOptions(StrictModel):
-    start_year: int = Field(ge=2026, le=2100)
+    start_year: int = Field(ge=2018, le=2100)
     start_term: Literal[1, 2] = 1
     semesters: int = Field(default=4, ge=1, le=12)
     credit_limit: float = Field(default=18, gt=0, le=30)
