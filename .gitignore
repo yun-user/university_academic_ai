@@ -57,6 +57,7 @@ evals/private_questions/
 
 # Source-review scratch files (never student records)
 tmp/planner_review/
+tmp/pdfs/
 output/planner/
 
 # Standalone web app dependencies, builds and explicitly saved student records

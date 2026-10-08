@@ -102,17 +102,21 @@ def audit(attempts: list[Attempt], profile: Profile, rules: RuleSet, *, equivale
     if rules.msc_computing_cap is not None:
         over = max(0, totals["MSC전산"] - rules.msc_computing_cap)
         if over:
-            warnings.append(f"MSC전산 {over:g}학점은 학과 내규의 {rules.msc_computing_cap:g}학점 상한을 넘어 MSC 합계에서 제외했습니다. 총 졸업인정학점에는 포함합니다. 최신 내규는 학교 확인이 필요합니다.")
+            warnings.append(f"MSC전산 {over:g}학점은 적용 규정의 {rules.msc_computing_cap:g}학점 상한을 넘어 MSC 합계에서 제외했습니다. 총 졸업인정학점에는 포함합니다.")
         totals["MSC전산"] = min(totals["MSC전산"], rules.msc_computing_cap)
+    elif profile.track == "심화" and totals["MSC전산"] > 6:
+        warnings.append("MSC전산은 입력한 인정 이수구분대로 합산했습니다. 2019.12 내규의 6학점 상한은 현재 개인별 적용이 확인되지 않아 일괄 차감하지 않습니다. 클래스넷의 심화 MSC 인정학점과 대조하세요.")
     totals["MSC 합계"] = sum(totals[k] for k in ("MSC수학", "MSC과학", "MSC전산"))
     checks = [Check(key, round(totals[key], 2), value,
                     "충족" if totals[key] >= value else "미충족",
                     "입력한 인정 이수구분 기준" if key != "총 졸업인정학점" else f"교양 인정 상한 {rules.liberal_cap:g}학점 적용")
               for key, value in rules.thresholds.items()]
-    if rules.msc_computing_cap is not None:
-        for check in checks:
-            if check.key in {"MSC전산", "MSC 합계"}:
-                check.detail += f" · 2019.12 학과 내규: 전산 최대 {rules.msc_computing_cap:g}학점, 최신 개정 확인 필요"
+    for check in checks:
+        if check.key == "MSC 합계":
+            check.detail = (f"수학 {totals['MSC수학']:g} + 과학 {totals['MSC과학']:g} + "
+                            f"전산 {totals['MSC전산']:g} = {totals['MSC 합계']:g}학점 · 입력한 인정 이수구분 기준")
+        if rules.msc_computing_cap is not None and check.key in {"MSC전산", "MSC 합계"}:
+            check.detail += f" · 적용 규정의 전산 상한 {rules.msc_computing_cap:g}학점"
     earned_groups = {aliases[a.code] for a in counted}
     identities = {code for code,group_id in aliases.items() if group_id in earned_groups}
     requirement_codes = set(identities)

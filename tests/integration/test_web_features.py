@@ -238,13 +238,13 @@ def test_source_prerequisites_not_recommendation_dotted_lines():
     assert next(c for c in parsed if c.code=='704814').concurrent==('704711',)
 
 
-def test_department_computing_cap_preserves_total_and_both_capstones(client,data):
+def test_legacy_computing_cap_is_not_applied_without_current_scope(client,data):
     data['attempts']=[{'code':f'COMP{i}','name':'가상 전산','credits':3,'category':'MSC전산',
                       'year':2020,'grade':'P'} for i in range(3)]
     checks={c['key']:c for c in post(client,'analysis',data).json()['audit']['checks']}
     assert checks['총 졸업인정학점']['current']==9
-    assert checks['MSC전산']['current']==checks['MSC 합계']['current']==6
-    assert '2019.12' in checks['MSC 합계']['detail']
+    assert checks['MSC전산']['current']==checks['MSC 합계']['current']==9
+    assert '전산 9 = 9학점' in checks['MSC 합계']['detail']
     assert checks['종합설계(1) 포함']['status']=='미충족'
     data['profile']['track']='일반'
     checks={c['key']:c for c in post(client,'analysis',data).json()['audit']['checks']}

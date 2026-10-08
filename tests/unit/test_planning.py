@@ -1,5 +1,6 @@
 """Meaningful audit and scheduling cases, independent of embeddings and LLMs."""
 import math
+from dataclasses import replace
 
 import pytest
 from pydantic import ValidationError
@@ -44,6 +45,31 @@ def test_credit_cap_uses_liberal_electives_but_not_as_professional():
     assert checks(rows)["총 졸업인정학점"].current == 43
     assert checks(rows,"일반")["총 졸업인정학점"].current == 53
     assert checks(rows)["전문교양"].current == 0
+
+
+@pytest.mark.parametrize("year", range(2018, 2027))
+@pytest.mark.parametrize("track", ["심화", "일반"])
+def test_msc_sum_does_not_silently_apply_unverified_historical_cap(year, track):
+    # Synthetic passed courses exercise independent category totals and exclusions.
+    rows = [attempt(f"M{i}", category="MSC수학") for i in range(4)]
+    rows += [attempt(f"S{i}", credits=4, category="MSC과학") for i in range(2)]
+    rows += [attempt(f"C{i}", category="MSC전산") for i in range(4)]
+    rows += [attempt("F", category="MSC전산", grade="F"),
+             attempt("PENDING", category="MSC전산", status="수강중"),
+             attempt("EXCLUDED", category="MSC전산", status="인정제외")]
+    profile, rules = Profile(admission_year=year, track=track), load_rules(PROJECT_ROOT, track, year)
+    assert rules.msc_computing_cap is None
+    report = audit(rows, profile, rules)
+    result = {c.key: c for c in report.checks}
+    assert result["MSC 합계"].current == result["총 졸업인정학점"].current == 32
+    assert "수학 12 + 과학 8 + 전산 12 = 32학점" in result["MSC 합계"].detail
+    assert report.pending_credits == 3
+    assert any("일괄 차감하지 않습니다" in w for w in report.warnings) == (track == "심화")
+    # Explicit, separately scoped rules may still impose a known cap.
+    capped = audit(rows, profile, replace(rules, msc_computing_cap=6))
+    capped_checks = {c.key: c for c in capped.checks}
+    assert capped_checks["MSC 합계"].current == 26
+    assert capped_checks["총 졸업인정학점"].current == 32
 
 
 @pytest.mark.parametrize("grade",["F","F0","NP","미확정"])

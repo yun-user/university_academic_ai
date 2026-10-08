@@ -89,6 +89,7 @@ function Progress({ check }: { check: Check }) {
           }}
         />
       </div>
+      {check.key === "MSC 합계" && <small>{check.detail}</small>}
     </div>
   );
 }

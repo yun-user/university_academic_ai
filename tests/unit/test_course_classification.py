@@ -26,6 +26,7 @@ def attempt(code, name, credits=3, **kw):
     ("012108", "대학화학(1)", 3, "MSC과학", 0),
     ("012109", "대학화학실험(1)", 1, "MSC과학", 0),
     ("012203", "응용수학(1)", 3, "MSC수학", 0),
+    ("002144", "공학기초수학(*)", 3, "교양선택", 0),
     ("002530", "협상의기술", 3, "전문교양", 1),
     ("002587", "한국사의이해", 3, "전문교양", 3),
     ("002248", "예술과건축", 3, "전문교양", 4),
@@ -76,6 +77,20 @@ def test_preview_preserves_manual_data_and_does_not_select_overwrite():
     assert original.category == "MSC전산"
     assert result["patch"] == {"category": "전문교양", "area": 7}
     assert result["changed"] and not result["selected"]
+
+
+def test_basic_math_correction_respects_manual_input_and_liberal_cap():
+    original = attempt("002144", "공학기초수학(*)", category="MSC수학")
+    profile = Profile(admission_year=2018)
+    suggestion = classify_attempts([original], profile, ROOT)["suggestions"][0]
+    assert suggestion["patch"] == {"category": "교양선택", "area": 0}
+    assert not suggestion["selected"] and original.category == "MSC수학"
+    corrected, _ = classify_import([original], profile, ROOT)
+    rows = [attempt(f"LIB{i}", "가상 교양", category="교양선택") for i in range(13)]
+    report = audit([*rows, *corrected], profile, load_rules(ROOT, "심화", 2018))
+    checks = {c.key: c.current for c in report.checks}
+    assert checks["MSC 합계"] == checks["MSC수학"] == checks["전문교양"] == 0
+    assert checks["총 졸업인정학점"] == 40 and report.excluded_liberal_credits == 2
 
 
 def test_major_subcategories_aggregate_once_and_survive_csv():
