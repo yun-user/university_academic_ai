@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "./api";
+import { maxSemesters, resizeSemesters } from "./planOptions";
 import type {
   Analysis,
   Bootstrap,
@@ -87,9 +88,22 @@ export function PlanControls({
     ) ??
     [];
   const edit = (rows: Placement[]) => void apply({ placements: rows });
+  const canAddSemester = data.options.semesters < maxSemesters(data.options);
   return (
     <section className="panel">
-      <h2>계획 비교와 직접 수정</h2>
+      <div className="section-heading">
+        <h2>계획 비교와 직접 수정</h2>
+        <button type="button" className="secondary small" disabled={!canAddSemester}
+          aria-describedby="semester-add-help"
+          onClick={() => {
+            if (canAddSemester) void apply({ options: resizeSemesters(data.options, data.options.semesters + 1) });
+          }}>+ 한 학기 추가</button>
+      </div>
+      <p id="semester-add-help" className="muted" role="status">
+        현재 {data.options.semesters}학기 · {canAddSemester
+          ? `추가하면 ${semester(data.options, data.options.semesters)}까지 계획합니다. 기존 한도와 직접 배치는 유지됩니다.`
+          : "계획은 최대 12학기, 2100년 2학기까지 추가할 수 있습니다. 시작 연도도 확인해 주세요."}
+      </p>
       <p className="muted">
         학기별 부담을 정하고 과목을 옮겨 보세요. 이동할 때
         선수·병수·개설학기·중복·학점 한도를 다시 검사합니다.

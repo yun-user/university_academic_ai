@@ -52,6 +52,24 @@ def test_per_term_caps_and_concurrent_plan(client,data):
     assert post(client,'analysis',data).status_code==422
 
 
+def test_extended_semester_preserves_manual_plan_limits_and_saved_input(client, data):
+    data['options']['semester_limits'] = [6, 0, 3]
+    data['placements'] = [{'code': 'A', 'semester': 0}, {'code': 'B', 'semester': 2}]
+    before = post(client, 'analysis', data).json()['roadmap']['semesters']
+    data['options']['semesters'] += 1
+    data['options']['semester_limits'].append(data['options']['credit_limit'])
+    response = post(client, 'analysis', data)
+    assert response.status_code == 200
+    after = response.json()['roadmap']['semesters']
+    assert after[:3] == before and len(after) == 4
+    assert (after[-1]['year'], after[-1]['term'], after[-1]['credits']) == (2028, 2, 0)
+    saved = post(client, 'profiles', {**data, 'label': 'synthetic extended plan'}).json()
+    loaded = client.get('/api/profiles/' + saved['id']).json()
+    assert loaded['placements'] == data['placements']
+    assert loaded['options']['semester_limits'] == [6, 0, 3, 18]
+    assert loaded['options']['semesters'] == 4
+
+
 @pytest.mark.parametrize('placements,fragment',[
     ([{'code':'B','semester':0}], '선수과목'),
     ([{'code':'A','semester':0},{'code':'B','semester':0}], '선수과목'),

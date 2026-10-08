@@ -24,6 +24,8 @@ import { api } from "./api";
 import CourseEditor from "./CourseEditor";
 import ClassificationReview from "./ClassificationReview";
 import CohortSummary from "./CohortSummary";
+import PixelGuide from "./PixelGuide";
+import { resizeSemesters } from "./planOptions";
 import {
   PlanControls,
   CandidateTools,
@@ -120,6 +122,7 @@ export default function App() {
   const [config, setConfig] = useState<Bootstrap | null>(null);
   const [data, setData] = useState<Input | null>(null);
   const [tab, setTab] = useState("overview");
+  const [scrollTarget, setScrollTarget] = useState<{ id: string } | null>(null);
   const [result, setResult] = useState<Analysis | null>(null);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
@@ -178,6 +181,22 @@ export default function App() {
     window.addEventListener("beforeunload", leave);
     return () => window.removeEventListener("beforeunload", leave);
   }, [dirty]);
+  useEffect(() => {
+    if (!scrollTarget) return;
+    const target = document.getElementById(scrollTarget.id);
+    target?.focus({ preventScroll: true });
+    target?.scrollIntoView({ block: "start" });
+  }, [tab, scrollTarget]);
+  useEffect(() => {
+    if (!error) return;
+    const target = document.getElementById("request-error");
+    target?.focus({ preventScroll: true });
+    target?.scrollIntoView({ block: "center" });
+  }, [error]);
+  function navigate(next: string, target = "page-title") {
+    setTab(next);
+    setScrollTarget({ id: target });
+  }
   async function work(name: string, action: () => Promise<void>) {
     setBusy(name);
     setError("");
@@ -235,12 +254,13 @@ export default function App() {
     setLabel("복원한 계획");
     setImported(null);
     setPaste("");
+    navigate("courses", "course-history");
   }
   function guard(text: string, action: () => Promise<void>) {
     if (dirty) setPendingAction({ text, run: action });
     else void action();
   }
-  async function analyze(llm = false, input = data) {
+  async function analyze(llm = false, input = data, destination?: string) {
     if (!input) return;
     await work(
       llm ? "AI가 수강 방향을 정리하고 있어요…" : "졸업요건을 계산하고 있어요…",
@@ -251,6 +271,7 @@ export default function App() {
             consent: llm && consent,
           }),
         );
+        if (destination) navigate(destination);
       },
     );
   }
@@ -266,6 +287,7 @@ export default function App() {
       setLabel("시연용 예시");
       setHistory([]);
       setResult(await api<Analysis>("/analysis", "POST", next));
+      navigate("overview");
       setNotice(
         "실제 학생과 관계없는 예시 8과목을 불러왔습니다. DB 저장 전까지는 이 화면에서만 사용합니다.",
       );
@@ -313,7 +335,7 @@ export default function App() {
       setPaste("");
       setHistory(await api<History[]>(`/profiles/${id}/history`));
       setResult(await api<Analysis>("/analysis", "POST", next));
-      setTab("overview");
+      navigate("overview");
       setNotice(
         "저장한 이수 내역을 불러와 현재 규정 자료로 다시 계산했습니다.",
       );
@@ -408,7 +430,7 @@ export default function App() {
           href="#"
           onClick={(e) => {
             e.preventDefault();
-            setTab("overview");
+            if (!busy) navigate("overview");
           }}
         >
           <span className="brand-icon">
@@ -424,7 +446,8 @@ export default function App() {
               key={t.id}
               className={tab === t.id ? "nav-item active" : "nav-item"}
               aria-current={tab === t.id ? "page" : undefined}
-              onClick={() => setTab(t.id)}
+              disabled={Boolean(busy)}
+              onClick={() => navigate(t.id)}
             >
               <t.icon size={19} />
               {t.label}
@@ -472,7 +495,7 @@ export default function App() {
                   ? "DB 저장됨"
                   : "새 계획"}
             </span>
-            <button className="secondary small" onClick={() => setTab("saved")}>
+            <button className="secondary small" disabled={Boolean(busy)} onClick={() => navigate("saved")}>
               <Save size={15} /> 저장 관리
             </button>
           </div>
@@ -486,7 +509,7 @@ export default function App() {
                   ? "ENGINEERING TRACK"
                   : "GENERAL TRACK"}
               </div>
-              <h1>
+              <h1 id="page-title" tabIndex={-1}>
                 {tab === "overview" ? (
                   <>
                     졸업까지의 길을,
@@ -516,7 +539,7 @@ export default function App() {
           </div>
           <div aria-live="polite">
             {error && (
-              <div role="alert" className="banner error">
+              <div id="request-error" tabIndex={-1} role="alert" className="banner error">
                 {error}
                 <button aria-label="오류 닫기" onClick={() => setError("")}>
                   <X size={17} />
@@ -578,7 +601,7 @@ export default function App() {
                     </div>
                     <button
                       className="text-button"
-                      onClick={() => setTab("courses")}
+                      onClick={() => navigate("courses", "course-history")}
                     >
                       이수구분 확인하기 <ArrowRight size={14} />
                     </button>
@@ -593,7 +616,7 @@ export default function App() {
                       </div>
                       <button
                         className="text-button"
-                        onClick={() => void analyze()}
+                        onClick={() => navigate("courses", "course-history")}
                       >
                         현황 계산 <ArrowRight size={16} />
                       </button>
@@ -631,7 +654,7 @@ export default function App() {
                         </p>
                         <button
                           className="primary"
-                          onClick={() => setTab("courses")}
+                          onClick={() => navigate("courses", "course-history")}
                         >
                           이수 과목 입력 <ArrowRight size={16} />
                         </button>
@@ -660,7 +683,7 @@ export default function App() {
                         ))}
                         <button
                           className="primary full"
-                          onClick={() => setTab("roadmap")}
+                          onClick={() => navigate("roadmap", "semester-roadmap")}
                         >
                           전체 로드맵 보기 <ArrowRight size={16} />
                         </button>
@@ -687,14 +710,14 @@ export default function App() {
                   </div>
                   <button
                     className="secondary"
-                    onClick={() => setTab("advisor")}
+                    onClick={() => navigate("advisor")}
                   >
                     AI 상담 시작 <ArrowRight size={16} />
                   </button>
                 </div>
                 <section className="panel settings-panel">
                   <div className="section-heading">
-                    <h2>나의 계획 조건</h2>
+                    <h2 id="plan-conditions" tabIndex={-1}>나의 계획 조건</h2>
                     <span className="muted">
                       {data.profile.admission_year}학번 · 단일전공 신입학
                     </span>
@@ -749,14 +772,10 @@ export default function App() {
                         value={data.options.semesters}
                         onChange={(e) =>
                           change({
-                            options: {
-                              ...data.options,
-                              semesters: Math.min(
+                            options: resizeSemesters(data.options, Math.min(
                                 12,
                                 Math.max(1, Number(e.target.value) || 1),
-                              ),
-                              semester_limits: [],
-                            },
+                              )),
                           })
                         }
                       />
@@ -870,7 +889,7 @@ export default function App() {
                 </section>
                 {result && (
                   <section className="panel">
-                    <h2>전체 졸업요건 점검</h2>
+                    <h2 id="graduation-checks" tabIndex={-1}>전체 졸업요건 점검</h2>
                     <CheckList checks={result.audit.checks} />
                   </section>
                 )}
@@ -1007,6 +1026,7 @@ export default function App() {
                         onClick={() => {
                           change({ attempts: imported.attempts });
                           setImported(null);
+                          navigate("courses", "course-history");
                           setNotice(
                             "과목을 적용했습니다. 이수구분과 상세 인정 정보를 확인한 뒤 계산해 주세요.",
                           );
@@ -1027,14 +1047,14 @@ export default function App() {
                   <div className="section-heading">
                     <div>
                       <span className="eyebrow">MY COURSES</span>
-                      <h2>
+                      <h2 id="course-history" tabIndex={-1}>
                         이수 내역{" "}
                         <span className="count">{data.attempts.length}</span>
                       </h2>
                     </div>
                     <button
                       className="primary small"
-                      onClick={() => void analyze()}
+                      onClick={() => void analyze(false, data, "overview")}
                     >
                       졸업요건 계산 <ArrowRight size={16} />
                     </button>
@@ -1060,7 +1080,7 @@ export default function App() {
                     현재 졸업인정학점 {total?.current}학점 ·{" "}
                     <button
                       className="text-button"
-                      onClick={() => setTab("overview")}
+                      onClick={() => navigate("overview", "graduation-checks")}
                     >
                       전체 점검 보기 <ArrowRight size={16} />
                     </button>
@@ -1083,13 +1103,13 @@ export default function App() {
                 <section className="panel">
                   <div className="section-heading">
                     <div>
-                      <h2>
+                      <h2 id="semester-roadmap" tabIndex={-1}>
                         {data.options.start_year}년부터 {data.options.semesters}
                         학기
                       </h2>
                       <p className="muted">
-                        학기당 최대 {data.options.credit_limit}학점 · 조건
-                        변경은 ‘나의 졸업 현황’에서
+                        학기당 최대 {data.options.credit_limit}학점 ·{" "}
+                        <button className="text-button" onClick={() => navigate("overview", "plan-conditions")}>계획 조건 변경</button>
                       </p>
                     </div>
                     <button className="primary" onClick={() => void analyze()}>
@@ -1160,6 +1180,7 @@ export default function App() {
                 </section>
                 <section className="panel">
                   <h2>나에게 맞게 추천받기</h2>
+                  <PixelGuide thinking={busy.startsWith("AI")} />
                   <label>
                     관심 진로와 희망 사항
                     <textarea
@@ -1265,6 +1286,7 @@ export default function App() {
             )}
             {tab === "advisor" && (
               <>
+                <PixelGuide thinking={busy.startsWith("AI")} />
                 <section className="panel advisor-intro">
                   <span className="ai-orb">
                     <Sparkles size={25} />
@@ -1297,7 +1319,10 @@ export default function App() {
                           "다음 학기 과목을 이렇게 추천한 이유가 뭔가요?",
                           "학점 말고 확인해야 할 졸업요건은 무엇인가요?",
                         ].map((q) => (
-                          <button key={q} onClick={() => setQuestion(q)}>
+                          <button key={q} onClick={() => {
+                            setQuestion(q);
+                            document.getElementById("advisor-question")?.focus();
+                          }}>
                             {q}
                             <ArrowRight size={14} />
                           </button>
@@ -1339,6 +1364,7 @@ export default function App() {
                     }}
                   >
                     <textarea
+                      id="advisor-question"
                       aria-label="AI에게 질문"
                       value={question}
                       onChange={(e) => setQuestion(e.target.value)}

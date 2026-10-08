@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, Search, Trash2, ChevronDown } from "lucide-react";
 import type { Attempt, Bootstrap } from "./types";
 
@@ -14,6 +14,11 @@ export default function CourseEditor({
   const [search, setSearch] = useState("");
   const [onlyUnknown, setOnlyUnknown] = useState(false);
   const [editing, setEditing] = useState<number | null>(null);
+  useEffect(() => {
+    if (editing === null) return;
+    document.getElementById("course-editor-heading")?.scrollIntoView({ block: "start" });
+    document.getElementById("course-code")?.focus({ preventScroll: true });
+  }, [editing]);
   function update(index: number, patch: Partial<Attempt>) {
     onChange(rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
   }
@@ -133,6 +138,7 @@ export default function CourseEditor({
                     <button
                       className="icon-button"
                       aria-label={`${index + 1}행 상세 편집`}
+                      id={`course-edit-${index}`}
                       onClick={() =>
                         setEditing(editing === index ? null : index)
                       }
@@ -162,8 +168,11 @@ export default function CourseEditor({
       {editing !== null && rows[editing] && (
         <div className="edit-card">
           <div className="section-heading">
-            <h3>{editing + 1}행 상세 편집</h3>
-            <button className="text-button" onClick={() => setEditing(null)}>
+            <h3 id="course-editor-heading" tabIndex={-1}>{editing + 1}행 상세 편집</h3>
+            <button className="text-button" onClick={() => {
+              document.getElementById(`course-edit-${editing}`)?.focus();
+              setEditing(null);
+            }}>
               닫기
             </button>
           </div>
@@ -195,6 +204,7 @@ export default function CourseEditor({
                   ][i]
                 }
                 <input
+                  id={key === "code" ? "course-code" : undefined}
                   value={rows[editing][key]}
                   type={["credits", "year"].includes(key) ? "number" : "text"}
                   onChange={(e) =>
