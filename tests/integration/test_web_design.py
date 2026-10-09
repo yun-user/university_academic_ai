@@ -56,7 +56,7 @@ def test_schema_three_migration_preserves_zero_and_manual_values(tmp_path):
     db.initialize()
     db.initialize()
     with db.connect() as conn:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 4
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 5
         assert [tuple(r) for r in conn.execute("SELECT design_credits,design_override FROM course_attempts ORDER BY position")] == [(0,0), (1.5,0)]
         assert conn.execute("SELECT created_at FROM profiles").fetchone()[0] == "old"
         assert not conn.execute("PRAGMA foreign_key_check").fetchall()

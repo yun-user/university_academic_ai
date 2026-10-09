@@ -14,6 +14,7 @@ from backend.schemas import AnalysisRequest, ChatRequest, SaveProfile, Transcrip
 from backend.service import PlannerService
 from backend.auth import Auth, COOKIE, TTL
 from backend.features import register_features
+from backend.advisor import register_advisor
 from src.planning.catalog import load_catalog
 from src.planning.classification import classify_attempts, classify_import
 from src.planning.io import read_transcript, sample_transcript, write_transcript
@@ -69,7 +70,7 @@ def create_app(db_path=None, root=ROOT, auth_required=None):
                 public = {"/api/health", "/api/auth/me", "/api/auth/login", "/api/auth/register", "/api/auth/logout"}
                 if not user and request.url.path not in public:
                     return JSONResponse({"detail":"로그인이 필요합니다."}, status_code=401)
-            if request.url.path in {"/api/chat", "/api/analysis", "/api/compare"} and request.method == "POST":
+            if (request.url.path in {"/api/chat", "/api/analysis", "/api/compare"} or request.url.path.endswith("/chat")) and request.method == "POST":
                 try:
                     auth.limit("compute:" + (request.state.owner_id or "local"), 30)
                 except HTTPException as exc:
@@ -232,6 +233,7 @@ def create_app(db_path=None, root=ROOT, auth_required=None):
         return database.history(profile_id, request.state.owner_id)
 
     register_features(app, service, database)
+    register_advisor(app, service, database)
 
     dist = root / "frontend/dist"
     if dist.is_dir():

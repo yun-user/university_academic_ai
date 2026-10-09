@@ -44,9 +44,12 @@ def package(root: Path, output: Path, *, include_web=False):
                   "tests/integration/test_web_api.py", "tests/integration/test_web_features.py", "tests/integration/test_web_cohorts.py",
                   "tests/integration/test_web_language.py",
                   "tests/integration/test_web_design.py",
+                  "tests/integration/test_web_counseling.py", "docs/졸업로드맵_개인화상담과기록.md",
+                  "docs/images/path-counseling-20261009.png", "docs/images/path-counseling-goals-20261009.png",
                   "frontend/package.json", "frontend/package-lock.json", "frontend/index.html",
                   "frontend/tests/planOptions.test.mjs",
                   "frontend/tests/chatInput.test.mjs",
+                  "frontend/tests/chatMessages.test.mjs",
                   "frontend/tsconfig.json", "frontend/vite.config.ts"]
         paths += [p.relative_to(root).as_posix() for p in sorted((root / "backend").glob("*.py"))]
         for folder, extensions in [("frontend/src", {".ts", ".tsx", ".css"}),

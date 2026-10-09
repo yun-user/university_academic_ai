@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { api } from "./api";
 import CourseEditor from "./CourseEditor";
+import { CounselingGoals, AnswerFeedback, CounselingEvaluation } from "./CounselingMemory";
 import DesignBreakdown from "./DesignBreakdown";
 import ClassificationReview from "./ClassificationReview";
 import CohortSummary from "./CohortSummary";
@@ -30,6 +31,7 @@ import AdvisorLauncher from "./AdvisorLauncher";
 import LanguageRequirements from "./LanguageRequirements";
 import { resizeSemesters } from "./planOptions";
 import { isChatSendKey } from "./chatInput";
+import { mergeMessages } from "./chatMessages";
 import {
   PlanControls,
   CandidateTools,
@@ -43,7 +45,7 @@ import type {
   Attempt,
   Bootstrap,
   Check,
-  ChatReply,
+  ChatContext,
   History,
   Input,
   Message,
@@ -137,6 +139,13 @@ export default function App() {
   const [pendingQuestion, setPendingQuestion] = useState<string | null>(null);
   const chatRequest = useRef(false);
   const composingQuestion = useRef(false);
+  const retryChat = useRef<{ key: string; id: string } | null>(null);
+  const [chatBefore, setChatBefore] = useState<number | null>(null);
+  const [chatContext, setChatContext] = useState<ChatContext | null>(null);
+  const [useHistory, setUseHistory] = useState(true);
+  const [chatLoadError, setChatLoadError] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatRefresh, setChatRefresh] = useState(0);
   const [records, setRecords] = useState<SavedSummary[]>([]);
   const [selected, setSelected] = useState<{
     id: string;
@@ -210,6 +219,35 @@ export default function App() {
       document.getElementById(`chat-reply-${messages.length - 1}`)?.scrollIntoView({ block: "start" });
     }
   }, [messages.length]);
+  useEffect(() => {
+    let active = true;
+    setMessages([]); setChatBefore(null); setChatLoadError("");
+    if (!selected) { setChatLoading(false); return; }
+    setChatLoading(true);
+    void api<{ messages: Message[]; before: number | null }>(`/profiles/${selected.id}/chat`)
+      .then((r) => { if (active) { setMessages((previous) => mergeMessages(previous, r.messages)); setChatBefore(r.before); } })
+      .catch((e: Error) => { if (active) setChatLoadError(e.message); })
+      .finally(() => { if (active) setChatLoading(false); });
+    return () => { active = false; };
+  }, [selected?.id, chatRefresh]);
+  useEffect(() => {
+    let active = true;
+    setChatContext(null);
+    if (!selected || !data || tab !== "advisor") return;
+    const timer = setTimeout(() => {
+      void api<ChatContext>(`/profiles/${selected.id}/chat/context`, "POST", data)
+        .then((r) => { if (active) setChatContext(r); })
+        .catch(() => { if (active) setChatContext(null); });
+    }, 250);
+    return () => { active = false; clearTimeout(timer); };
+  }, [data, selected?.id, messages, tab]);
+  async function olderChats() {
+    if (!selected || chatBefore === null) return;
+    await work("이전 상담을 불러오고 있어요…", async () => {
+      const r = await api<{ messages: Message[]; before: number | null }>(`/profiles/${selected.id}/chat?before=${chatBefore}`);
+      setMessages((previous) => mergeMessages(previous, r.messages)); setChatBefore(r.before);
+    });
+  }
   function navigate(next: string, target = "page-title") {
     setTab(next);
     setScrollTarget({ id: target });
@@ -232,7 +270,6 @@ export default function App() {
     if (!data) return;
     setData({ ...data, ...patch });
     setResult(null);
-    setMessages([]);
     setQuestion("");
     setConsent(false);
     setDirty(true);
@@ -310,22 +347,22 @@ export default function App() {
       );
     });
   }
+  async function persist(copy = false) {
+    if (!data) throw new Error("계획을 먼저 입력하세요.");
+    const target = copy ? null : selected;
+    const saved = await api<Saved>(target ? `/profiles/${target.id}` : "/profiles", target ? "PUT" : "POST",
+      { ...data, label, revision: target?.revision ?? null });
+    setSelected({ id: saved.id, revision: saved.revision });
+    setDirty(false);
+    setRecords(await api<SavedSummary[]>("/profiles"));
+    setHistory(await api<History[]>(`/profiles/${saved.id}/history`));
+    return saved;
+  }
   async function save(copy = false) {
     if (!data) return;
     await work("이수 내역과 계획을 저장하고 있어요…", async () => {
-      const target = copy ? null : selected;
-      const saved = await api<Saved>(
-        target ? `/profiles/${target.id}` : "/profiles",
-        target ? "PUT" : "POST",
-        { ...data, label, revision: target?.revision ?? null },
-      );
-      setSelected({ id: saved.id, revision: saved.revision });
-      setDirty(false);
-      setRecords(await api<SavedSummary[]>("/profiles"));
-      setHistory(await api<History[]>(`/profiles/${saved.id}/history`));
-      setNotice(
-        `“${saved.label}” 저장 완료 · 버전 ${saved.revision}. DB에는 입력과 기본 계산 결과가 저장됩니다.`,
-      );
+      const saved = await persist(copy);
+      setNotice(`“${saved.label}” 저장 완료 · 버전 ${saved.revision}. 목표와 입력을 DB에 저장했습니다.`);
     });
   }
   async function load(id: string) {
@@ -339,13 +376,14 @@ export default function App() {
         candidates: saved.candidates ?? null,
         placements: saved.placements ?? null,
         checklist: saved.checklist ?? [],
+        counseling_preferences: saved.counseling_preferences,
       };
       setData(next);
       setLabel(saved.label);
       setSelected({ id: saved.id, revision: saved.revision });
       setDirty(false);
       setResult(null);
-      setMessages([]);
+      setChatRefresh((v) => v + 1);
       setQuestion("");
       setConsent(false);
       setImported(null);
@@ -368,7 +406,7 @@ export default function App() {
         setDirty(true);
       }
       setNotice(
-        "DB의 해당 항목, 이수 내역과 계획 기록을 삭제했습니다. 현재 편집 화면은 유지됩니다.",
+        "DB의 해당 계획, 이수 내역, 상담과 평가 기록을 삭제했습니다. 현재 편집 화면은 유지됩니다.",
       );
     });
   }
@@ -379,16 +417,15 @@ export default function App() {
     setPendingQuestion(asked);
     try {
       await work("AI가 현재 이수 상태를 확인하고 있어요…", async () => {
-        const reply = await api<ChatReply>("/chat", "POST", {
-          ...data,
-          question: asked,
-          consent,
-          history: messages
-            .filter((m) => m.mode === "llm")
-            .slice(-6)
-            .map((m) => ({ question: m.question, answer: m.answer })),
+        const target = !selected || dirty ? await persist() : selected;
+        const key = JSON.stringify({ profile: target.id, data, question: asked, useHistory });
+        if (retryChat.current?.key !== key) retryChat.current = { key, id: crypto.randomUUID() };
+        const reply = await api<Message>(`/profiles/${target.id}/chat`, "POST", {
+          ...data, question: asked, consent, history: [], use_history: useHistory,
+          request_id: retryChat.current.id, profile_revision: target.revision,
         });
-        setMessages((previous) => [...previous, { ...reply, question: asked }]);
+        setMessages((previous) => mergeMessages(previous, [reply]));
+        retryChat.current = null;
         setQuestion("");
       });
     } finally {
@@ -425,7 +462,7 @@ export default function App() {
         <b>AI 상담에 사용할 정보</b>
         <p>
           OpenAI로 과목 코드·이수 시기·요건 계산값·어학 시험과 점수 및 제출 확인 결과·희망 사항·질문과 최근 대화
-          6개를 보냅니다. 성적 등급과 학교 계정 정보는 보내지 않습니다. 질문에
+          중 현재 조건에 맞는 최대 6개·목표·근거 대조한 정정 최대 3개를 보냅니다. 성적 등급과 학교 계정 정보는 보내지 않습니다. 질문과 목표·정정 메모에
           이름·학번·비밀번호를 쓰지 마세요.
         </p>
         <label className="check-label">
@@ -1330,15 +1367,22 @@ export default function App() {
                     </p>
                   </div>
                 </section>
+                <CounselingGoals data={data} change={change} save={() => void save()} saved={!!selected} />
                 {aiConsent}
                 <section className="panel conversation">
                   <div className="section-heading">
                     <h2>나의 졸업 상담</h2>
                     <span className="tag neutral">
-                      대화는 DB에 저장하지 않아요
+                      {selected ? `“${label}”의 상담 기록` : "첫 질문부터 현재 계획과 함께 저장"}
                     </span>
                   </div>
-                  {messages.length === 0 && pendingQuestion === null && (
+                  <p className="muted">질문을 보내면 현재 계획·목표와 상담을 이 컴퓨터의 DB에 저장합니다. 재접속 후 ‘저장한 계획’에서 불러오면 대화를 이어갈 수 있습니다. 기록 저장은 모델 학습이 아닙니다.</p>
+                  <label className="check-label"><input type="checkbox" checked={useHistory} onChange={(e) => { setUseHistory(e.target.checked); setConsent(false); }} />이전 상담과 근거 대조한 정정을 다음 질문에 참고</label>
+                  <p className="muted">{chatContext ? `현재 조건으로 참고 가능한 대화 ${chatContext.history_count}개 · 정정 ${chatContext.correction_count}개` : "질문할 때 최신 규정·이수 현황으로 다시 계산합니다."} · 과거 답변의 학점·규정은 현재 계산보다 우선하지 않습니다.</p>
+                  {selected && <div className="button-row"><button disabled={chatLoading} onClick={() => setChatRefresh((v) => v + 1)}>상담 기록 새로고침</button>{chatBefore !== null && <button onClick={() => void olderChats()}>이전 상담 더 보기</button>}</div>}
+                  {chatLoading && <p role="status">상담 기록을 불러오고 있어요…</p>}
+                  {chatLoadError && <p role="alert">상담 기록 조회 실패: {chatLoadError} 새로고침으로 다시 시도하세요.</p>}
+                  {messages.length === 0 && pendingQuestion === null && !chatLoading && (
                     <div className="chat-empty">
                       <MessageCircle size={32} />
                       <h3>궁금한 점을 물어보세요</h3>
@@ -1361,7 +1405,7 @@ export default function App() {
                   )}
                   <div aria-live="polite">
                     {messages.map((m, i) => (
-                      <div className="chat-turn" id={`chat-reply-${i}`} key={i} tabIndex={-1}>
+                      <div className="chat-turn" id={`chat-reply-${i}`} key={m.id ?? i} tabIndex={-1}>
                         <div className="user-message">{m.question}</div>
                         <div className="assistant-message">
                           <span
@@ -1371,9 +1415,14 @@ export default function App() {
                               ? `LLM 답변 · ${m.model}`
                               : "AI 답변 미생성"}
                           </span>
+                          {m.created_at && <small>{date(m.created_at)}</small>}
+                          {m.status && m.status !== "complete" && <p>진행 중이거나 중단된 상담입니다. 기록을 새로고침하고 필요하면 새 질문을 보내세요.</p>}
+                          {chatContext && (m.input_fingerprint !== chatContext.input_fingerprint || m.rules_fingerprint !== chatContext.rules_fingerprint) && <p className="tag amber">현재 조건·규정과 다른 과거 답변 · 다음 상담에서 제외</p>}
+                          {m.feedback?.verified && <p className="tag neutral">정정됨 · 아래 평가·정정에서 확인</p>}
                           <p>{m.answer}</p>
+                          {m.memory_used && <small>답변 당시 참고: 이전 대화 {m.memory_used.history_count}개 · 정정 {m.memory_used.correction_count}개</small>}
                           <EvidenceList items={m.evidence} />
-                          {m.referenced_checks.length > 0 && (
+                          {m.referenced_checks?.length > 0 && (
                             <div className="references">
                               <small>참고한 계산 항목</small>
                               {m.referenced_checks.map((c) => (
@@ -1381,6 +1430,9 @@ export default function App() {
                               ))}
                             </div>
                           )}
+                          {selected && m.id && m.status !== "pending" && <AnswerFeedback key={`${m.id}-${m.revision}`} message={m} profileId={selected.id} work={work}
+                            onUpdate={(updated) => { setMessages((rows) => rows.map((r) => r.id === updated.id ? updated : r)); setNotice("답변 평가·정정을 저장했습니다."); }}
+                            onDelete={() => setMessages((rows) => rows.filter((r) => r.id !== m.id))} />}
                         </div>
                       </div>
                     ))}
@@ -1449,6 +1501,7 @@ export default function App() {
                       </button>
                     </div>
                   </form>
+                  {selected && <CounselingEvaluation key={selected.id} profileId={selected.id} work={work} />}
                 </section>
               </>
             )}

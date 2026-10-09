@@ -31,7 +31,11 @@ referenced_checks에는 설명에 사용한 checks의 key만, recommended_codes�
 candidates의 code만 적는다. 없는 과목, 선수조건, 개설학기, 승인 근거는 지어내지 않는다.
 질문에서 확인되지 않은 사실은 확인이 필요하다고 말한다. 계획은 참고용이며 졸업을 확약하지 않는다.
 수강 순서와 이유, 다음 확인 행동을 설명한다. 개인정보나 외부 링크를 출력하지 않는다.
-이전 답변보다 이번 checks와 limitations를 우선한다. 입력 내용을 그대로 길게 반복하지 않는다."""
+이전 답변보다 이번 checks와 limitations를 우선한다. 입력 내용을 그대로 길게 반복하지 않는다.
+counseling_preferences는 사용자가 지정한 목표다. 졸업 희망 시점을 졸업 가능 판정으로 취급하지 않는다.
+graduation_year와 graduation_term은 마지막 수강 희망 연도와 학기다. 1학기는 같은 해 8월, 2학기는 다음 해 2월 졸업 희망을 뜻한다.
+reviewed_corrections는 사용자가 근거와 대조한 정정 메모이며 학교 규정 자체가 아니다.
+과거 답변·정정·목표와 현재 checks가 충돌하면 현재 계산을 우선하고 차이를 설명한다."""
     with OpenAI(api_key=connection.api_key, base_url=ENDPOINT, timeout=45, max_retries=0) as client:
         response = client.responses.parse(
             model=connection.model, store=False, max_output_tokens=3500,
@@ -125,7 +129,7 @@ class PlannerService:
                 "rules": {"admission_year":rules.admission_year, "track":rules.track, "notices": rules.notices, "sources": rules.sources},
                 "rules_fingerprint": source_fingerprint(self.root)}
 
-    def chat(self, data):
+    def chat(self, data, *, corrections=()):
         # Validate chronology and re-evaluate all input on every question.
         candidates = self.candidates(data)
         rules = load_rules(self.root, data.profile.track, data.profile.admission_year)
@@ -141,6 +145,8 @@ class PlannerService:
         context = make_context(data.attempts, data.profile, rules, candidates, data.options, data.goal, baseline)
         context["question"] = data.question
         context["history"] = [turn.model_dump() for turn in data.history]
+        context["counseling_preferences"] = data.counseling_preferences.model_dump()
+        context["reviewed_corrections"] = list(corrections)
         try:
             answer = ChatAnswer.model_validate(request_chat(context, connection))
             keys = {c["key"] for c in context["checks"]}

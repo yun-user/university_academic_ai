@@ -37,7 +37,7 @@ class Database:
     def initialize(self):
         with self.connect() as db:
             version = db.execute("PRAGMA user_version").fetchone()[0]
-            if version not in (0, 1, 2, 3, 4):
+            if version not in (0, 1, 2, 3, 4, 5):
                 raise RuntimeError("Unsupported database schema version")
             db.executescript("""
                 CREATE TABLE IF NOT EXISTS profiles (
@@ -91,7 +91,26 @@ class Database:
         with self.connect() as db:
             if "design_override" not in {r[1] for r in db.execute("PRAGMA table_info(course_attempts)")}:
                 db.execute("ALTER TABLE course_attempts ADD COLUMN design_override INTEGER NOT NULL DEFAULT 0 CHECK(design_override IN (0,1))")
-            db.execute("PRAGMA user_version=4")
+            db.executescript("""
+                CREATE TABLE IF NOT EXISTS chat_turns (
+                    sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id TEXT NOT NULL UNIQUE,
+                    profile_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+                    request_id TEXT NOT NULL, created_at TEXT NOT NULL,
+                    input_fingerprint TEXT NOT NULL, rules_fingerprint TEXT NOT NULL,
+                    question TEXT NOT NULL, status TEXT NOT NULL,
+                    reply_json TEXT NOT NULL DEFAULT '{}',
+                    feedback_json TEXT NOT NULL DEFAULT '{}', revision INTEGER NOT NULL DEFAULT 1,
+                    UNIQUE(profile_id, request_id)
+                );
+                CREATE INDEX IF NOT EXISTS idx_chat_profile ON chat_turns(profile_id,sequence);
+                CREATE TABLE IF NOT EXISTS chat_feedback_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    turn_id TEXT NOT NULL REFERENCES chat_turns(id) ON DELETE CASCADE,
+                    created_at TEXT NOT NULL, feedback_json TEXT NOT NULL
+                );
+                PRAGMA user_version=5;
+            """)
 
     def _upgrade_cohorts(self):
         # SQLite cannot alter a CHECK constraint in place. Rebuild only the
@@ -151,7 +170,7 @@ class Database:
     def save(self, data: SaveProfile, result, profile_id=None, owner_id=""):
         now = datetime.now(timezone.utc).isoformat()
         encode = lambda value: json.dumps(value, ensure_ascii=False)
-        settings = data.model_dump_json(include={"candidates", "placements", "checklist"})
+        settings = data.model_dump_json(include={"candidates", "placements", "checklist", "counseling_preferences"})
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             if profile_id is None:

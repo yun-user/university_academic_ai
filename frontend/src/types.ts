@@ -89,6 +89,15 @@ export interface Input {
   candidates?: Candidate[] | null;
   placements?: Placement[] | null;
   checklist?: TaskItem[];
+  counseling_preferences?: CounselingPreferences;
+}
+export interface CounselingPreferences {
+  interests: string;
+  credit_limit: number | null;
+  final_credit_limit: number | null;
+  graduation_year: number | null;
+  graduation_term: number | null;
+  notes: string;
 }
 export interface Check {
   key: string;
@@ -216,6 +225,28 @@ export interface ChatReply {
 }
 export interface Message extends ChatReply {
   question: string;
+  id?: string;
+  sequence?: number;
+  created_at?: string;
+  revision?: number;
+  status?: string;
+  input_fingerprint?: string;
+  rules_fingerprint?: string;
+  feedback?: ChatFeedback;
+  memory_used?: { history_count: number; correction_count: number };
+}
+export interface ChatFeedback {
+  rating: "unrated" | "helpful" | "unhelpful";
+  correction: string;
+  source: string;
+  verified: boolean;
+  updated_at?: string;
+}
+export interface ChatContext {
+  input_fingerprint: string;
+  rules_fingerprint: string;
+  history_count: number;
+  correction_count: number;
 }
 export interface History {
   id: string;

@@ -1,0 +1,51 @@
+{
+  "date": "2026-10-09",
+  "scope": "Plan-scoped counseling history, explicit preferences, current-context memory and answer review",
+  "python": {
+    "full_suite_before_dependency_test": {"passed": 663, "seconds": 63.21},
+    "counseling_suite_after_final_backend_change": {"passed": 22, "seconds": 14.31},
+    "final_collected_test_count": 664,
+    "installed_release_counseling_suite": {"passed": 22, "seconds": 15.31},
+    "known_warnings": "Two third-party Starlette/httpx/anyio deprecation warnings"
+  },
+  "frontend": {"tests_passed": 9, "typescript_and_vite_build": "passed"},
+  "graduation_synthetic_scenarios": {"passed": 32, "total": 32},
+  "browser": {
+    "provider": "LOCAL-MOCK-NO-NETWORK",
+    "database": "isolated synthetic data",
+    "verified": [
+      "first question saves current plan and explicit preferences",
+      "Enter submission shows pixel loading and disables duplicate submission",
+      "second answer receives first conversation",
+      "new browser session restores preferences and conversations from saved plan",
+      "review correction with source is delivered to next question",
+      "evaluation totals and downloaded JSON contain three synthetic conversations and one review event",
+      "applying credit preferences produces semester caps 15,15,15,9",
+      "changed plan excludes all three old conversations and labels them as old context",
+      "final goal form shows complete term labels",
+      "no browser console errors observed"
+    ]
+  },
+  "preservation": {
+    "root_and_installed_databases_backed_up": true,
+    "existing_rows_preserved": true,
+    "schema_version": 5,
+    "foreign_keys_and_integrity": "passed",
+    "environment_files_unchanged": true
+  },
+  "release": {
+    "file": "output/planner/graduation-roadmap-memory-20261009.zip",
+    "files": 138,
+    "bytes": 10048672,
+    "sha256": "9fcb0bfb5f1b549d44d0588f7515cf3904fa1c0f74ed32ee4dcb4e219a03395f",
+    "installed_manifest_verified": true,
+    "live_app_health_and_new_routes": "passed at 127.0.0.1:8000"
+  },
+  "limitations": [
+    "No real student data sent to a remote model for these tests",
+    "Provider calls were mocked; real LLM factual quality or improvement was not measured",
+    "Reviewed corrections are user-confirmed notes, not official university approvals",
+    "Data is stored per plan, with owner checks in optional account mode; local mode is one shared local owner",
+    "No automatic training, no hosted conversations, no automatic import of exported chat histories"
+  ]
+}

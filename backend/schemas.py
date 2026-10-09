@@ -15,6 +15,21 @@ class TaskItem(StrictModel):
     note: str = Field(default="", max_length=500)
 
 
+class CounselingPreferences(StrictModel):
+    interests: str = Field(default="", max_length=300)
+    credit_limit: int | None = Field(default=None, ge=1, le=30)
+    final_credit_limit: int | None = Field(default=None, ge=0, le=30)
+    graduation_year: int | None = Field(default=None, ge=2018, le=2100)
+    graduation_term: Literal[1, 2] | None = None
+    notes: str = Field(default="", max_length=500)
+
+    @model_validator(mode="after")
+    def paired_target(self):
+        if (self.graduation_year is None) != (self.graduation_term is None):
+            raise ValueError("졸업 희망 연도와 학기를 함께 입력하세요.")
+        return self
+
+
 class PlanningInput(StrictModel):
     attempts: list[Attempt] = Field(default_factory=list, max_length=500)
     profile: Profile = Field(default_factory=Profile)
@@ -23,6 +38,7 @@ class PlanningInput(StrictModel):
     candidates: list[Candidate] | None = Field(default=None, max_length=500)
     placements: list[Placement] | None = Field(default=None, max_length=500)
     checklist: list[TaskItem] = Field(default_factory=list, max_length=100)
+    counseling_preferences: CounselingPreferences = Field(default_factory=CounselingPreferences)
 
     @model_validator(mode="after")
     def unique_items(self):
@@ -123,3 +139,23 @@ class ChatRequest(PlanningInput):
         if not value.strip():
             raise ValueError("질문을 입력하세요.")
         return value.strip()
+
+
+class SavedChatRequest(ChatRequest):
+    request_id: str = Field(pattern=r"^[a-zA-Z0-9_-]{8,64}$")
+    profile_revision: int = Field(ge=1)
+    use_history: bool = True
+
+
+class ChatFeedback(StrictModel):
+    revision: int = Field(ge=1)
+    rating: Literal["unrated", "helpful", "unhelpful"] = "unrated"
+    correction: str = Field(default="", max_length=3000)
+    source: str = Field(default="", max_length=500)
+    verified: bool = False
+
+    @model_validator(mode="after")
+    def grounded_correction(self):
+        if self.verified and (not self.correction.strip() or not self.source.strip()):
+            raise ValueError("정정 확인에는 정정 내용과 대조 근거가 필요합니다.")
+        return self
