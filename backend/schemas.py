@@ -103,6 +103,10 @@ class ClassificationRequest(StrictModel):
     profile: Profile
 
 
+class DesignRequest(ClassificationRequest):
+    candidates: list[Candidate] | None = Field(default=None, max_length=500)
+
+
 class ChatTurn(StrictModel):
     question: str = Field(min_length=1, max_length=1000)
     answer: str = Field(min_length=1, max_length=3000)

@@ -213,7 +213,7 @@ def test_real_version2_schema_migrates_preserving_children_owners_and_revisions(
     assert database.get_profile("legacy", "owner-test")["profile"]["admission_year"] == 2018
     assert len(database.history("legacy", "owner-test")) == 2
     with database.connect() as db:
-        assert db.execute("PRAGMA user_version").fetchone()[0] == 3
+        assert db.execute("PRAGMA user_version").fetchone()[0] == 4
         assert not db.execute("PRAGMA foreign_key_check").fetchall()
     database.delete("legacy", 5, "owner-test")
     with database.connect() as db:

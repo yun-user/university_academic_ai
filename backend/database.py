@@ -37,7 +37,7 @@ class Database:
     def initialize(self):
         with self.connect() as db:
             version = db.execute("PRAGMA user_version").fetchone()[0]
-            if version not in (0, 1, 2, 3):
+            if version not in (0, 1, 2, 3, 4):
                 raise RuntimeError("Unsupported database schema version")
             db.executescript("""
                 CREATE TABLE IF NOT EXISTS profiles (
@@ -88,6 +88,10 @@ class Database:
             """)
         if version < 3:
             self._upgrade_cohorts()
+        with self.connect() as db:
+            if "design_override" not in {r[1] for r in db.execute("PRAGMA table_info(course_attempts)")}:
+                db.execute("ALTER TABLE course_attempts ADD COLUMN design_override INTEGER NOT NULL DEFAULT 0 CHECK(design_override IN (0,1))")
+            db.execute("PRAGMA user_version=4")
 
     def _upgrade_cohorts(self):
         # SQLite cannot alter a CHECK constraint in place. Rebuild only the
@@ -132,6 +136,7 @@ class Database:
         for attempt in attempts:
             attempt.pop("profile_id")
             attempt.pop("position")
+            attempt["design_override"] = bool(attempt["design_override"])
         return {"id": row["id"], "label": row["label"], "revision": row["revision"],
                 "created_at": row["created_at"], "updated_at": row["updated_at"],
                 "profile": Profile.model_validate_json(row["profile_json"]).model_dump(), "options": json.loads(row["options_json"]),
@@ -168,9 +173,9 @@ class Database:
                     data.label, revision, data.profile.admission_year, data.profile.track,
                     data.profile.model_dump_json(), data.options.model_dump_json(), data.goal, now, settings, profile_id))
                 db.execute("DELETE FROM course_attempts WHERE profile_id=?", (profile_id,))
-            db.executemany("INSERT INTO course_attempts VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)", [
+            db.executemany("INSERT INTO course_attempts(profile_id,position,code,name,credits,category,area,design_credits,equivalent_code,year,term,grade,status,sw_data_credits,design_override) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", [
                 (profile_id, i, a.code, a.name, a.credits, a.category, a.area, a.design_credits,
-                 a.equivalent_code, a.year, a.term, a.grade, a.status, a.sw_data_credits) for i, a in enumerate(data.attempts)])
+                 a.equivalent_code, a.year, a.term, a.grade, a.status, a.sw_data_credits, int(a.design_override)) for i, a in enumerate(data.attempts)])
             db.execute("INSERT INTO plan_runs VALUES(?,?,?,?,?,?)", (
                 uuid4().hex, profile_id, revision, now, result["rules_fingerprint"], encode(result)))
             return self._read(db, profile_id, owner_id)

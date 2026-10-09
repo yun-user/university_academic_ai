@@ -5,6 +5,7 @@ export interface Attempt {
   category: string;
   area: number;
   design_credits: number;
+  design_override?: boolean;
   sw_data_credits?: number;
   equivalent_code: string;
   year: number;
@@ -98,10 +99,24 @@ export interface Check {
   detail: string;
 }
 export interface Audit {
+  design_allocations?: DesignAllocation[];
   checks: Check[];
   warnings: string[];
   pending_credits: number;
   excluded_liberal_credits: number;
+}
+export interface DesignAllocation {
+  index: number;
+  code: string;
+  name: string;
+  year: number;
+  term: number;
+  credits: number;
+  counted_credits: number;
+  mode: "auto" | "manual" | "held" | "unmatched";
+  kind: string;
+  reason: string;
+  source: string;
 }
 export interface Semester {
   year: number;

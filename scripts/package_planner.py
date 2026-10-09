@@ -34,6 +34,7 @@ def package(root: Path, output: Path, *, include_web=False):
     paths += ["tests/unit/"+n for n in ["test_planning.py","test_planning_substitutions.py","test_planning_workspace.py","test_planning_llm.py"]]
     paths += ["tests/unit/test_planning_portal.py", "tests/unit/test_course_classification.py", "tests/ui/test_planner_page.py", "tests/ui/test_planner_portal.py"]
     paths += ["tests/unit/test_planning_language.py", "docs/졸업로드맵_어학요건과상담캐릭터.md"]
+    paths += ["tests/unit/test_planning_design.py", "docs/졸업로드맵_설계학점자동반영.md"]
     paths += ["docs/images/path-classification-20261008.jpg"]
     if include_web:
         paths += ["requirements-web.txt", "setup_web.cmd", "start_web.cmd", "scripts/start_web.py",
@@ -42,6 +43,7 @@ def package(root: Path, output: Path, *, include_web=False):
                   "docs/졸업로드맵_화면이동과학기추가.md",
                   "tests/integration/test_web_api.py", "tests/integration/test_web_features.py", "tests/integration/test_web_cohorts.py",
                   "tests/integration/test_web_language.py",
+                  "tests/integration/test_web_design.py",
                   "frontend/package.json", "frontend/package-lock.json", "frontend/index.html",
                   "frontend/tests/planOptions.test.mjs",
                   "frontend/tests/chatInput.test.mjs",

@@ -39,7 +39,13 @@ def test_model_preference_changes_useful_selection_without_changing_audit():
     assert assisted.status == "llm"
     assert assisted.roadmap.semesters[0].courses[0].code == "B"
     assert assisted.roadmap.semesters[0].credits == 3
-    assert assisted.roadmap.projected.as_dict() == baseline.projected.as_dict()
+    assisted_audit = assisted.roadmap.projected.as_dict()
+    baseline_audit = baseline.projected.as_dict()
+    # Per-course explanations now name the chosen course; numerical graduation
+    # requirements and warnings must still be identical when preferences change.
+    assert sum(r["counted_credits"] for r in assisted_audit.pop("design_allocations")) == 0
+    assert sum(r["counted_credits"] for r in baseline_audit.pop("design_allocations")) == 0
+    assert assisted_audit == baseline_audit
 
 
 @pytest.mark.parametrize("code",["INVENTED","DONE"])

@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { api } from "./api";
 import CourseEditor from "./CourseEditor";
+import DesignBreakdown from "./DesignBreakdown";
 import ClassificationReview from "./ClassificationReview";
 import CohortSummary from "./CohortSummary";
 import PixelGuide from "./PixelGuide";
@@ -916,6 +917,7 @@ export default function App() {
                   <section className="panel">
                     <h2 id="graduation-checks" tabIndex={-1}>전체 졸업요건 점검</h2>
                     <CheckList checks={result.audit.checks} />
+                    {result.audit.design_allocations && <DesignBreakdown rows={result.audit.design_allocations} />}
                   </section>
                 )}
               </>
@@ -1097,6 +1099,8 @@ export default function App() {
                   <CourseEditor
                     rows={data.attempts}
                     config={config}
+                    profile={data.profile}
+                    candidates={data.candidates}
                     onChange={(attempts) => change({ attempts })}
                   />
                 </section>

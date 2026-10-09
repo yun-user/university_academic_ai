@@ -47,7 +47,7 @@ export default function ClassificationReview({ rows, profile, onChange, work }: 
     {preview && !current && <p role="status" className="muted">입력 또는 학번이 바뀌었습니다. 분류 확인을 다시 실행해 주세요.</p>}
     {current && <div className="edit-card">
       <h3>분류 근거 확인 · 일치 {current.matched}개 / 자료 미일치 {current.unmatched}개</h3>
-      <p className="muted">미확인·기존 ‘전공’ 항목의 변경 제안을 먼저 선택했습니다. 직접 지정한 분류는 자동 선택하지 않습니다. 현재 자료에 따른 참고 제안이므로 수강 당시 인정 여부를 확인해 주세요. 설계·동일과목·SW 학점은 자동 부여하지 않습니다.</p>
+      <p className="muted">미확인·기존 ‘전공’ 항목의 변경 제안을 먼저 선택했습니다. 직접 지정한 분류는 자동 선택하지 않습니다. 현재 자료에 따른 참고 제안이므로 수강 당시 인정 여부를 확인해 주세요. 설계학점은 분류 반영 후 학과 설계표와 별도로 자동 대조합니다. 동일과목·SW 학점은 자동 부여하지 않습니다.</p>
       <div className="table-wrap">
         <table>
           <thead><tr><th>적용</th><th>과목</th><th>현재 → 제안</th><th>근거</th></tr></thead>

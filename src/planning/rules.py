@@ -21,6 +21,7 @@ class RuleSet:
     science_mode: str = "physics"
     msc_detail: str = ""
     language_policy: dict | None = None
+    design_policy: dict | None = None
 
 
 def _verify(root, source):
@@ -82,6 +83,9 @@ def load_rules(project_root: Path, track: str, admission_year: int = 2020) -> Ru
         sources += ("사용자 제공 이수체계도.pdf 1쪽 · 2026 수강연도부터 학번 무관 적용; 2쪽은 권장 순서",
                     "소프트웨어융합학과 프로그램 이수내규 2019.12 · 수업 제8조, 공학교육인증 운영 제5조 · 최신 개정과 대조 필요")
     guidance = load_department_guidance(project_root)
+    from src.planning.design import load_design_policy
+    design = load_design_policy(project_root)
+    sources += (design["source_url"] + " · 설계과목 현재 공개표 참고 배분 · " + design["reviewed_on"],)
     sources += tuple(s["url"] + " · " + s["title"] for s in guidance["sources"])
     return RuleSet(track, thresholds, cohort["liberal_cap"], sources, (
         f"{admission_year}학번·소프트웨어융합학과·단일전공 신입학 기준의 참고 계산입니다. 편입·전과·복수전공은 별도 확인이 필요합니다.",
@@ -96,4 +100,4 @@ def load_rules(project_root: Path, track: str, admission_year: int = 2020) -> Ru
         "2021학번 이후 심화는 대학 공통의 실험 포함 과학 1set를 점검합니다. 학과 표의 직접 확인 범위는 2020학번까지이므로 과학 지정과목은 별도 확인합니다.",
     ), msc_computing_cap=None,
        admission_year=admission_year, cohort_range=(cohort["from"], cohort["to"]),
-       science_mode=science_mode, msc_detail=cohort["msc_detail"], language_policy=guidance)
+       science_mode=science_mode, msc_detail=cohort["msc_detail"], language_policy=guidance, design_policy=design)

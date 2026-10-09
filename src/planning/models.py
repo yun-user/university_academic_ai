@@ -72,6 +72,7 @@ class Course(StrictModel):
 
 
 class Attempt(Course):
+    design_override: bool = False
     # Earlier recognized coursework is retained; admission is selected separately.
     year: int = Field(ge=2000, le=2100)
     term: Literal[1, 2, 3, 4] = 1

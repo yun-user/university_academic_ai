@@ -16,6 +16,9 @@ def render_report(profile, current, roadmap, rules, *, advice=None, model="") ->
         [(c.key, c.current, after[c.key].current, c.required, after[c.key].status, after[c.key].detail) for c in current.checks])
     terms = "".join(f"<h3>{s.year}년 {s.term}학기 · {s.credits:g}학점</h3>" +
         _table(["학수번호", "과목", "학점", "추천 이유"],[(c.code,c.name,c.credits,c.reason) for c in s.courses]) for s in roadmap.semesters)
+    design = _table(["학수번호", "과목", "수강연도", "설계 배분", "현재 합산", "근거"],
+        [(r["code"], r["name"], r["year"], r["credits"], r["counted_credits"], r["reason"])
+         for r in current.design_allocations if r["credits"] or r["mode"] == "manual" or r["kind"]])
     def items(values):
         return "<ul>" + "".join(f"<li>{escape(v)}</li>" for v in values) + "</ul>"
     explanation = "<p>처리 방식: 기본 계산 · LLM 설명 없음</p>"
@@ -37,7 +40,7 @@ th,td{{border:1px solid #ccd8d7;padding:8px;text-align:left;overflow-wrap:anywhe
 <p>{profile.admission_year}학번 · 소프트웨어융합학과 · {escape(profile.track)}과정 · 작성일 {seoul_today().isoformat()}</p>
 <div class="notice">학교의 공식 졸업판정이 아닙니다. 아래 계획은 입력 조건을 모두 만족하며 이수한다는 가정입니다.
 브라우저의 인쇄 메뉴에서 인쇄하거나 PDF로 저장할 수 있습니다. 실제 이수내역과 사용자 확인 근거가 포함될 수 있으므로 공유 범위를 확인하세요.</div>
-{explanation}<h2>현재와 계획 후의 요건 비교</h2>{checks}<h2>학기별 계획</h2>{terms}
+{explanation}<h2>현재와 계획 후의 요건 비교</h2>{checks}<h2>현재 설계학점 배분 근거</h2>{design}<h2>학기별 계획</h2>{terms}
 <h2>계획 후에도 남는 항목</h2>{items(roadmap.unresolved)}
 <h2>계산 가정</h2>{items(roadmap.assumptions)}<h2>출처와 적용 범위</h2>{items(list(rules.sources)+list(rules.notices))}
 </body></html>'''

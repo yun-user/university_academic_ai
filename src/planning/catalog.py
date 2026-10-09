@@ -53,7 +53,6 @@ def load_catalog(project_root: Path) -> list[Candidate]:
     source = root / "sources" / design["source_file"]
     if hashlib.sha256(source.read_bytes()).hexdigest() != design["sha256"]:
         raise ValueError("설계 인정학점 원본이 바뀌었습니다. 검토 후 다시 시도하세요.")
-    design_by_name = {normalized_name(r["name"]): r["design_credits"] for r in design["rows"]}
     path = project_root / "data/raw/tables/소프트웨어융합학과_학년별교과과정_2026.csv"
     candidates = []
     with path.open(encoding="utf-8-sig", newline="") as handle:
@@ -83,7 +82,7 @@ def load_catalog(project_root: Path) -> list[Candidate]:
             for (code, credits), semesters in by_code.items():
                 candidates.append(Candidate(code=code, name=row["교과목명"], credits=credits,
                     category=category, area=int(area.group(1)) if area and category == "전문교양" else 0,
-                    design_credits=design_by_name.get(normalized_name(row["교과목명"]), 0) if category in MAJOR_CATEGORIES else 0,
+                    design_credits=0,
                     # Alternatives satisfying one requirement are not necessarily
                     # identical courses for credit recognition.
                     semesters=tuple(semesters),
@@ -108,7 +107,18 @@ def load_catalog(project_root: Path) -> list[Candidate]:
     current = {row["code"]: row for row in review["courses"] if row.get("catalog")}
     candidates = [c.model_copy(update={"alternatives": ("001009",)}) if c.code == "001023" else c
                   for c in candidates]
-    return [c.model_copy(update={"name": current[c.code]["names"][0],
+    candidates = [c.model_copy(update={"name": current[c.code]["names"][0],
                                "category": current[c.code]["category"],
                                "source": c.source + " · 학과 홈페이지 이수구분 대조(2026-10-08)"})
             if c.code in current else c for c in candidates]
+    # Match all three identifiers after canonicalizing current course names.
+    # The legacy CSV alone contains historical labels (e.g. 704836).
+    allocations = {(r["code"], normalized_name(r["name"]), r["credits"]): r["design_credits"]
+                   for r in design["rows"]}
+    result = []
+    for c in candidates:
+        value = allocations.get((c.code, normalized_name(c.name), c.credits), 0) if c.category in MAJOR_CATEGORIES else 0
+        result.append(c.model_copy(update={"design_credits": value,
+            "prerequisites": tuple(dict.fromkeys([*c.prerequisites,
+                *(["725843"] if value and c.code != "725843" else [])]))}))
+    return result

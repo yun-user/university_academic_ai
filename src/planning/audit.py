@@ -2,12 +2,13 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 
 from src.planning.models import Attempt, MAJOR_CATEGORIES, PASS_GRADES, Profile
 from src.planning.rules import RuleSet
 from src.planning.classification import is_english_bonus
 from src.planning.language import assess_language
+from src.planning.design import design_allocation
 
 
 @dataclass
@@ -33,12 +34,14 @@ class Audit:
     recognized_codes: set[str]
     requirement_codes: set[str]
     substitutions_applied: list[dict]
+    design_allocations: list[dict] = field(default_factory=list)
 
     def as_dict(self):
         return {"checks": [{**asdict(c), "missing": c.missing} for c in self.checks],
                 "warnings": self.warnings, "pending_credits": self.pending_credits,
                 "excluded_liberal_credits": self.excluded_liberal_credits,
-                "substitutions_applied": self.substitutions_applied}
+                "substitutions_applied": self.substitutions_applied,
+                "design_allocations": self.design_allocations}
 
 
 def equivalence_map(courses):
@@ -82,6 +85,17 @@ def audit(attempts: list[Attempt], profile: Profile, rules: RuleSet, *, equivale
         else:
             counted.append(rows[0])
     totals = defaultdict(float)
+    counted_ids = {id(a) for a in counted}
+    design_rows = [{"index": i, **design_allocation(a, rules.design_policy)} for i, a in enumerate(attempts)]
+    for row, attempt in zip(design_rows, attempts):
+        row["counted_credits"] = row["credits"] if id(attempt) in counted_ids and not is_english_bonus(attempt) else 0
+        if is_english_bonus(attempt):
+            row["reason"] = "영어전용강좌 추가학점은 설계학점에 포함하지 않습니다."
+        elif id(attempt) not in counted_ids:
+            row["reason"] += " · 미취득·성적미확정·중복·인정제외 여부로 현재 합계 제외"
+    totals["설계 인정학점"] = sum(row["counted_credits"] for row in design_rows)
+    if any(r["mode"] == "auto" and r["counted_credits"] for r in design_rows):
+        warnings.append("설계학점은 학과 공개표와 일치하는 이수 과목에 참고 배분했습니다. 교과목 전체 학점과 별개이며 총학점에는 중복 가산하지 않습니다. 수강 당시 설계 인정·기초→요소→종합 순서·학교 승인 예외를 확인하세요.")
     # English-medium bonus credits are independent of the original course,
     # even when that course was retaken. Only explicitly recorded awards count.
     bonus = sum(a.credits for a in counted if is_english_bonus(a))
@@ -92,7 +106,6 @@ def audit(attempts: list[Attempt], profile: Profile, rules: RuleSet, *, equivale
         category = "일반선택" if is_english_bonus(a) else ("전공" if a.category in MAJOR_CATEGORIES else a.category)
         totals[category] += a.credits
         if not is_english_bonus(a):
-            totals["설계 인정학점"] += a.design_credits
             totals["SW·데이터활용"] += a.sw_data_credits
     liberal = sum(totals[k] for k in ("전문교양", "교양선택", "특성화교양"))
     excess = max(0, liberal - rules.liberal_cap)
@@ -113,6 +126,10 @@ def audit(attempts: list[Attempt], profile: Profile, rules: RuleSet, *, equivale
                     "입력한 인정 이수구분 기준" if key != "총 졸업인정학점" else f"교양 인정 상한 {rules.liberal_cap:g}학점 적용")
               for key, value in rules.thresholds.items()]
     for check in checks:
+        if check.key == "설계 인정학점":
+            automatic = sum(r["counted_credits"] for r in design_rows if r["mode"] == "auto")
+            manual = sum(r["counted_credits"] for r in design_rows if r["mode"] == "manual")
+            check.detail = f"학과 표 자동 대조 {automatic:g} + 직접 입력 {manual:g}학점. 교과학점과 중복 가산하지 않음. 수강 당시 인정·설계 이수순서는 별도 확인"
         if check.key == "MSC 합계":
             check.detail = (f"수학 {totals['MSC수학']:g} + 과학 {totals['MSC과학']:g} + "
                             f"전산 {totals['MSC전산']:g} = {totals['MSC 합계']:g}학점 · 입력한 인정 이수구분 기준")
@@ -203,4 +220,4 @@ def audit(attempts: list[Attempt], profile: Profile, rules: RuleSet, *, equivale
         checks.append(Check(key, int(state == "충족"), 1, state, "사용자 확인: " + detail))
     checks.append(Check("학교 최종 졸업사정", 0, 1, "확인 필요", "등록학기·평점·과정별 세부 인정 등은 학교에서 최종 확인"))
     return Audit(checks, counted, warnings, round(pending, 2), round(excess, 2), identities,
-                 requirement_codes, substitutions_applied)
+                 requirement_codes, substitutions_applied, design_rows)

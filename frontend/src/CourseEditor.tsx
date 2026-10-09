@@ -1,19 +1,38 @@
 import { useEffect, useState } from "react";
 import { Plus, Search, Trash2, ChevronDown } from "lucide-react";
-import type { Attempt, Bootstrap } from "./types";
+import type { Attempt, Bootstrap, Candidate, DesignAllocation, Profile } from "./types";
+import { api } from "./api";
+import DesignBreakdown, { designMode } from "./DesignBreakdown";
 
 export default function CourseEditor({
   rows,
   config,
+  profile,
+  candidates,
   onChange,
 }: {
   rows: Attempt[];
   config: Bootstrap;
+  profile: Profile;
+  candidates?: Candidate[] | null;
   onChange: (rows: Attempt[]) => void;
 }) {
   const [search, setSearch] = useState("");
   const [onlyUnknown, setOnlyUnknown] = useState(false);
   const [editing, setEditing] = useState<number | null>(null);
+  const [design, setDesign] = useState<DesignAllocation[] | null>(null);
+  const [designError, setDesignError] = useState("");
+  useEffect(() => {
+    let active = true;
+    setDesign(null);
+    setDesignError("");
+    const timer = setTimeout(() => {
+      void api<{ allocations: DesignAllocation[] }>("/courses/design", "POST", { attempts: rows, profile, candidates })
+        .then((data) => { if (active) setDesign(data.allocations); })
+        .catch((error: Error) => { if (active) setDesignError(error.message); });
+    }, 250);
+    return () => { active = false; clearTimeout(timer); };
+  }, [rows, profile, candidates]);
   useEffect(() => {
     if (editing === null) return;
     document.getElementById("course-editor-heading")?.scrollIntoView({ block: "start" });
@@ -92,6 +111,7 @@ export default function CourseEditor({
                 <th>과목 / 학수번호</th>
                 <th>이수구분</th>
                 <th>학점</th>
+                <th>설계학점</th>
                 <th>수강 시기</th>
                 <th>성적</th>
                 <th>상태</th>
@@ -117,6 +137,7 @@ export default function CourseEditor({
                           category: e.target.value,
                           area: e.target.value === "전문교양" ? row.area : 0,
                           design_credits: ["전공", "전공필수", "전공선택"].includes(e.target.value) ? row.design_credits : 0,
+                          design_override: ["전공", "전공필수", "전공선택"].includes(e.target.value) ? row.design_override : false,
                         })
                       }
                     >
@@ -126,6 +147,9 @@ export default function CourseEditor({
                     </select>
                   </td>
                   <td>{row.credits}</td>
+                  <td title={design?.[index]?.reason}>
+                    {design?.[index] ? <>{design[index].counted_credits}<small>{designMode(design[index])}</small></> : "—"}
+                  </td>
                   <td>
                     {row.year} ·{" "}
                     {["", "1학기", "2학기", "여름", "겨울"][row.term]}
@@ -165,6 +189,9 @@ export default function CourseEditor({
           )}
         </div>
       )}
+      {rows.length > 0 && <div aria-live="polite">
+        {design ? <DesignBreakdown rows={design} /> : <p className="muted">{designError ? `설계학점 대조 보류: ${designError} 과목 정보를 완성한 뒤 자동으로 다시 계산합니다.` : "설계학점을 대조하고 있습니다…"}</p>}
+      </div>}
       {editing !== null && rows[editing] && (
         <div className="edit-card">
           <div className="section-heading">
@@ -267,23 +294,29 @@ export default function CourseEditor({
               />
             </label>
             <label>
-              설계 인정학점
+              설계 인정학점 (자동 / 직접 지정)
               <input
                 type="number"
                 min={0}
                 max={rows[editing].credits}
                 step={0.5}
-                disabled={!["전공", "전공필수", "전공선택"].includes(rows[editing].category)}
-                value={rows[editing].design_credits}
+                disabled={!["전공", "전공필수", "전공선택"].includes(rows[editing].category) || !(rows[editing].design_override || rows[editing].design_credits > 0)}
+                value={rows[editing].design_override || rows[editing].design_credits > 0 ? rows[editing].design_credits : (design?.[editing]?.credits ?? "")}
                 onChange={(e) =>
-                  update(editing, { design_credits: Number(e.target.value) })
+                  update(editing, { design_credits: Number(e.target.value), design_override: true })
                 }
               />
             </label>
+            <label className="check-label">
+              <input type="checkbox" checked={!!rows[editing].design_override || rows[editing].design_credits > 0}
+                disabled={!["전공", "전공필수", "전공선택"].includes(rows[editing].category)}
+                onChange={(e) => update(editing, { design_override: e.target.checked, design_credits: e.target.checked ? (design?.[editing]?.credits ?? rows[editing].design_credits) : 0 })} />
+              설계학점 직접 지정 (0학점 포함)
+            </label>
           </div>
           <p className="muted">
-            동일과목·교양영역·설계학점은 수강 당시 학교 인정 기준을 확인한 값만
-            입력하세요. SW·데이터 인정학점은 별도 요건 점검에만 사용하며
+            설계학점은 기본적으로 학과 표와 자동 대조합니다. 직접 지정하면 자동값보다 우선하며, 해제하면 자동 대조로 돌아갑니다.
+            동일과목·교양영역·설계 직접 입력값은 수강 당시 학교 인정 기준을 확인하세요. SW·데이터 인정학점은 별도 요건 점검에만 사용하며
             총학점에 다시 더하지 않습니다. 대상 과목과 중복 인정 여부는 학교에서
             확인하세요. F/NP와 인정제외 과목은 졸업학점에서 제외됩니다.
           </p>

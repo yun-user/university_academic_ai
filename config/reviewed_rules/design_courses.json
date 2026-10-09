@@ -1,70 +1,96 @@
 {
   "source_url": "https://software.hongik.ac.kr/home/templates/curriculum/courses",
   "source_file": "design_courses.html",
-  "sha256": "7286ccd2a3462a7495aec0f01e85a03a909ae7da343a23cb6c253c8e4e69639f",
-  "reviewed_on": "2026-09-12",
+  "sha256": "7dd8696755a0cb1d469e886eed83af34a451e9e8b7936c0a8aecdfde2419c5d9",
+  "reviewed_on": "2026-10-09",
   "applies_by": "course_taken_year",
-  "effective_from": 2019,
+  "auto_compare_from": 2019,
+  "auto_compare_to": 2026,
+  "scope_note": "현재 공개표에 학수번호·과목명·교과학점이 일치하는 2019~2026년 수강내역의 참고 배분입니다. 시행연도와 중간 개정 이력은 페이지에 명시되지 않아 수강 당시 학과 인정 및 설계 이수순서는 별도로 확인해야 합니다. 2019년 이전·검토연도 이후는 자동 배분하지 않습니다.",
   "rows": [
     {
+      "name": "창의적공학설계입문",
+      "code": "725843",
+      "credits": 2.0,
+      "design_credits": 2,
+      "kind": "기초설계"
+    },
+    {
+      "name": "디자인패턴프로그래밍및실습",
+      "code": "704828",
+      "credits": 3.0,
+      "design_credits": 2,
+      "kind": "요소설계"
+    },
+    {
+      "name": "오픈소스소프트웨어",
+      "code": "704833",
+      "credits": 3.0,
+      "design_credits": 1,
+      "kind": "요소설계"
+    },
+    {
+      "name": "데이터베이스및실습",
+      "code": "704822",
+      "credits": 3.0,
+      "design_credits": 1,
+      "kind": "요소설계"
+    },
+    {
       "name": "알고리즘및실습",
+      "code": "704826",
+      "credits": 4.0,
       "design_credits": 1,
       "kind": "요소설계"
     },
     {
       "name": "머신러닝및실습(2)",
+      "code": "704612",
+      "credits": 3.0,
       "design_credits": 1,
-      "kind": "요소설계"
-    },
-    {
-      "name": "종합설계(2)",
-      "design_credits": 3,
-      "kind": "종합설계"
-    },
-    {
-      "name": "창의적공학설계입문",
-      "design_credits": 2,
-      "kind": "기초설계"
-    },
-    {
-      "name": "디자인패턴프로그래밍 및 실습",
-      "design_credits": 2,
       "kind": "요소설계"
     },
     {
       "name": "네트워크실험",
+      "code": "704511",
+      "credits": 3.0,
       "design_credits": 1,
       "kind": "요소설계"
     },
     {
-      "name": "종합설계(1)",
-      "design_credits": 3,
-      "kind": "종합설계"
+      "name": "통신프로그래밍",
+      "code": "704836",
+      "credits": 3.0,
+      "design_credits": 1,
+      "kind": "요소설계"
     },
     {
       "name": "소프트웨어공학",
+      "code": "704805",
+      "credits": 3.0,
       "design_credits": 1,
       "kind": "요소설계"
     },
     {
       "name": "컴퓨터보안",
+      "code": "704811",
+      "credits": 3.0,
       "design_credits": 1,
       "kind": "요소설계"
     },
     {
-      "name": "데이타베이스및실습",
-      "design_credits": 1,
-      "kind": "요소설계"
+      "name": "종합설계(1)",
+      "code": "704711",
+      "credits": 3.0,
+      "design_credits": 3,
+      "kind": "종합설계"
     },
     {
-      "name": "통신시스템실험",
-      "design_credits": 1,
-      "kind": "요소설계"
-    },
-    {
-      "name": "오픈소스소프트웨어",
-      "design_credits": 1,
-      "kind": "요소설계"
+      "name": "종합설계(2)",
+      "code": "704814",
+      "credits": 3.0,
+      "design_credits": 3,
+      "kind": "종합설계"
     }
   ]
 }

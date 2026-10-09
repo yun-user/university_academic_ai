@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from backend.database import Database, MissingProfile, RevisionConflict
-from backend.schemas import AnalysisRequest, ChatRequest, SaveProfile, TranscriptText, Credentials, ClassificationRequest
+from backend.schemas import AnalysisRequest, ChatRequest, SaveProfile, TranscriptText, Credentials, ClassificationRequest, DesignRequest
 from backend.service import PlannerService
 from backend.auth import Auth, COOKIE, TTL
 from backend.features import register_features
@@ -186,6 +186,13 @@ def create_app(db_path=None, root=ROOT, auth_required=None):
     @app.post("/api/courses/classify")
     def classification(data: ClassificationRequest):
         return classify_attempts(data.attempts, data.profile, root)
+
+    @app.post("/api/courses/design")
+    def design_credits(data: DesignRequest):
+        from src.planning.audit import audit
+        result = audit(data.attempts, data.profile, load_rules(root, data.profile.track, data.profile.admission_year), equivalences=service.candidates(data))
+        return {"allocations": result.design_allocations,
+                "total": sum(r["counted_credits"] for r in result.design_allocations)}
 
     @app.post("/api/import/csv")
     def csv(data: TranscriptText):

@@ -7,6 +7,7 @@ from src.planning.models import Attempt
 COLUMNS = {"학수번호": "code", "과목명": "name", "학점": "credits", "이수구분": "category",
            "교양영역": "area", "설계인정학점": "design_credits", "동일과목코드": "equivalent_code",
            "SW데이터인정학점": "sw_data_credits",
+           "설계직접입력": "design_override",
            "수강연도": "year", "학기": "term", "성적": "grade", "상태": "status"}
 REQUIRED = {"학수번호", "과목명", "학점", "이수구분", "수강연도", "학기", "성적", "상태"}
 

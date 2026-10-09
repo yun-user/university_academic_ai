@@ -1,0 +1,39 @@
+{
+  "date": "2026-10-09",
+  "scope": "Design-credit reference allocation from reviewed department table",
+  "source": "https://software.hongik.ac.kr/home/templates/curriculum/courses",
+  "python_tests": {
+    "unique_passed": 642,
+    "execution": "split runs; one assertion updated for new per-course explanations, then passed"
+  },
+  "frontend_tests_passed": 7,
+  "frontend_build": "passed",
+  "synthetic_scenarios": "32/32",
+  "installed_package_tests_passed": 23,
+  "browser": [
+    "stored zero values yield 12 design credits for six synthetic courses",
+    "explicit manual zero reduces sum to 10",
+    "disabling override restores 12",
+    "save and reload preserve original inputs and recompute",
+    "readonly automatic field shows allocated value 2"
+  ],
+  "live_service": {
+    "health": 200,
+    "synthetic_design_preview": 1,
+    "schema": 4,
+    "quick_check": "ok"
+  },
+  "package": {
+    "file": "graduation-roadmap-design-20261009.zip",
+    "files": 130,
+    "bytes": 9931040,
+    "sha256": "7475a7909f0ab6acf1862f0fdbb5eb54ea0a1bd50da51eb26c41f44a87cdc792"
+  },
+  "preservation": "Both known private DB locations backed up before update; .env hashes unchanged",
+  "limitations": [
+    "2019-2026 is an app comparison scope, not a verified official historical effective period",
+    "Actual year recognition, sequence and approved exceptions require school confirmation",
+    "Synthetic checks are not a measured accuracy assessment on real students",
+    "Two existing dependency deprecation warnings"
+  ]
+}

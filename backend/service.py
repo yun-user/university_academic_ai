@@ -72,6 +72,8 @@ class PlannerService:
                 base += ["개인별 클래스넷 적용원칙·필수목록 및 사용자가 입력한 확인 근거"]
             if "설계" in key or "졸업작품" in key or "졸업논문" in key:
                 base += [s for s in rules.sources if "이수체계도" in s or "2019.12" in s]
+            if "설계" in key and rules.design_policy:
+                base += [rules.design_policy["source_url"]]
             if "MSC" in key or "일반과정 어학" in key:
                 base += [s for s in rules.sources if "2019.12" in s]
             if "어학" in key:
